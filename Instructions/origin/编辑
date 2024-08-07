@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#程序首先在指示目录里边寻找目标，找不到再在当前目录下寻找
+if [ $# -eq 1 ]; then
+	file_name="/chs/$1"
+	if [ -d $1 || -e $1 ]; then
+		vim $1
+		exit 0
+	elif [ -e $file_name ]; then
+		vim $file_name
+		exit 0
+	fi
+	echo "$1：地址错误。"
+	exit 1
+fi
+echo "$0：参数错误。"
+echo "$#：$@"
+exit 1
+

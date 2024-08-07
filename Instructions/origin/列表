@@ -1,0 +1,48 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+	ls
+	exit 0
+
+elif [ $# -gt 0 ]; then
+
+	param=''
+	params=()
+	for arg in "$@"; do
+		#遍历指令
+
+		if [ $arg == '全部' ]; then
+			#列出全部文件
+			if [ -z $param ]; then
+				param='-a'
+			else
+				param="${param}a"
+			fi
+
+		elif [ $arg == '详细' ]; then
+			#列出文件详细信息
+
+			if [ -z $param ]; then
+				param='-l'
+			else
+				param="${param}l"
+			fi
+
+		elif [ $arg == '指令' ]; then
+			#列出指令集
+			params+=('/chs')
+
+		else
+			#列出了其他参数
+			params+=("$arg")
+		fi
+	done
+
+	merged_params=$(printf '%s ' "${params[@]}")
+	merged_params="${merged_params%% }"
+	ls $param $merged_params
+	exit 0
+fi
+
+echo "$0：参数错误。"
+echo "$#：$@"

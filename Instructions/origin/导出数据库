@@ -1,0 +1,16 @@
+
+echo '数据库：'
+read database
+
+echo '用户名：'
+read username
+
+echo '密码：'
+read password
+
+echo '目标文件：'
+read target
+
+
+mysqldump -u $username -p $password $database > $target
+

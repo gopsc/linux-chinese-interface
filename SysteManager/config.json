@@ -1,0 +1,10 @@
+{
+    "Configure": {
+        "Program Mode": "usually",
+        "Managers Array Length": "60",
+        "Listen Address": "0.0.0.0",
+        "Listen Port": "8080",
+        "Max Connections": "100",
+        "FTP Server Path": "C:\\"
+    }
+}

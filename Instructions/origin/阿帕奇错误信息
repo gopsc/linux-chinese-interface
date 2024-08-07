@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $# -eq 1 ]; then
+    if [ $1 == '帮助' ]; then
+        echo '输出阿帕奇2的错误日志'
+        exit 0
+    fi
+fi 
+
+cat /var/log/apache2/error.log
