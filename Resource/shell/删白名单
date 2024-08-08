@@ -1,5 +1,0 @@
-if [ $# -eq 1 ]; then
-    iptables -D INPUT $1
-    exit 0
-fi
-echo '输入一个数字，代表这条白名单的编号。'

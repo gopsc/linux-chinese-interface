@@ -24,6 +24,7 @@ fi
 in_names=(\
     "cJSON-master/cJSON" \
     "main" \
+    "network/Communication"
     "soft/model/fsm" \
     "soft/os" \
     "soft/terminal/DisableEcho" "soft/terminal/HideCursor" "soft/terminal/PrimaryTerminal" \

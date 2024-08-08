@@ -28,6 +28,8 @@
   efficient, easy to use, it's a pleasant library for developing image processing
   algorithms in C++.
 
+CImg库是一个用于图像处理的小型开源C++工具包。它由一个单一的头文件“CImg.h”组成，提供了一组最小的C++类和方法，可以在你自己的源代码中使用，用于加载/保存、处理和显示图像。它具有很强的可移植性（Unix/X11、Windows、MacOS X、FreeBSD等），高效、易用，是一个用于在C++中开发图像处理算法的不错的库。
+
 # Authors and contributors :
 #----------------------------
 
@@ -144,6 +146,8 @@
 
  You have to RESPECT these licenses. More particularly, please carefully read
  the license terms before using the CImg library in commercial products.
+
+你必须尊重这些许可证。更具体地说，请在将CImg库用于商业产品之前，仔细阅读许可证条款。
 
 # Package structure :
 #--------------------

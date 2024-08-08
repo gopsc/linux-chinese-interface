@@ -1,6 +1,7 @@
 # cJSON
 
 Ultralightweight JSON parser in ANSI C.
+用ANSI C编写的超轻量级JSON解析器。
 
 ## Table of contents
 * [License](#license)
@@ -65,31 +66,52 @@ MIT License
 cJSON aims to be the dumbest possible parser that you can get your job done with.
 It's a single file of C, and a single header file.
 
+cJSON的目标是成为能完成任务的最“愚蠢”的解析器。
+它是一个C文件和一个头文件。
+
 JSON is described best here: http://www.json.org/
 It's like XML, but fat-free. You use it to move data around, store things, or just
 generally represent your program's state.
+
+JSON在这里被描述得最好。
+它就像XML，但没有赘肉。你用它来传递数据、存储东西，或者只是一般性地表示你程序的状态。
 
 As a library, cJSON exists to take away as much legwork as it can, but not get in your way.
 As a point of pragmatism (i.e. ignoring the truth), I'm going to say that you can use it
 in one of two modes: Auto and Manual. Let's have a quick run-through.
 
+作为一个库，cJSON的存在是为了尽可能地减少繁琐的工作，但又不会妨碍你。
+从实用主义的角度（即忽略事实），我要说你可以用以下两种模式之一来使用它：自动模式和手动模式。
+让我们快速浏览一下。
+
 I lifted some JSON from this page: http://www.json.org/fatfree.html
 That page inspired me to write cJSON, which is a parser that tries to share the same
 philosophy as JSON itself. Simple, dumb, out of the way.
 
+我从这个页面中提取了一些关于JSON的信息。
+这个页面启发了我编写cJSON，它是一个解析器，试图与JSON本身拥有相同的理念。
+简单、愚蠢、不碍事
+
 ### Building
 
 There are several ways to incorporate cJSON into your project.
+有几种方法可以将cJSON纳入你的项目中。
 
 #### copying the source
 
 Because the entire library is only one C file and one header file, you can just copy `cJSON.h` and `cJSON.c` to your projects source and start using it.
 
+因为整个库只有一个C文件和一个头文件，你可以直接将 cJSON.h 和 cJSON.c 复制到你的源代码中并开始使用它。
+
 cJSON is written in ANSI C (C89) in order to support as many platforms and compilers as possible.
+
+cJSON是用ANSI C（C89）编写的，以便尽可能支持更多的平台和编译器。
 
 #### CMake
 
 With CMake, cJSON supports a full blown build system. This way you get the most features. CMake with an equal or higher version than 2.8.5 is supported. With CMake it is recommended to do an out of tree build, meaning the compiled files are put in a directory separate from the source files. So in order to build cJSON with CMake on a Unix platform, make a `build` directory and run CMake inside it.
+
+使用CMake，cJSON支持一个完整的构建系统。这样你可以获得最多的功能。支持版本为2.8.5或更高的CMake。使用CMake，建议进行树外构建，这意味着编译后的文件被放在与源文件分开的目录中。因此，为了在Unix平台上使用CMake构建cJSON，创建一个“build”目录并在其中运行CMake。
 
 ```
 mkdir build
@@ -98,6 +120,8 @@ cmake ..
 ```
 
 This will create a Makefile and a bunch of other files. You can then compile it:
+
+这将创建一个Makefile和许多其他文件。然后你可以对其进行编译：
 
 ```
 make
@@ -132,13 +156,21 @@ make DESTDIR=$pkgdir install
 
 On Windows CMake is usually used to create a Visual Studio solution file by running it inside the Developer Command Prompt for Visual Studio, for exact steps follow the official documentation from CMake and Microsoft and use the online search engine of your choice. The descriptions of the the options above still generally apply, although not all of them work on Windows.
 
+在Windows上，CMake通常通过Visual Studio的开发者命令提示符中运行来创建一个Visual Studio解决方案文件，关于具体步骤，请遵循CMake和微软的官方文档，并使用你选择的在线搜索引擎。上述选项的描述仍然普遍适用，尽管并非所有选项在Windows上都能使用。
+
 #### Makefile
 
 **NOTE:** This Method is deprecated. Use CMake if at all possible. Makefile support is limited to fixing bugs.
 
+注意：这种方法已被弃用。如果可能的话，请使用CMake。对Makefile的支持仅限于修复漏洞。
+
 If you don't have CMake available, but still have GNU make. You can use the makefile to build cJSON:
 
+如果你没有可用的CMake，但仍然有GNU make。你可以使用makefile来构建cJSON：
+
 Run this command in the directory with the source code and it will automatically compile static and shared libraries and a little test program (not the full test suite).
+
+在包含源代码的目录中运行此命令，它将自动编译静态库和共享库以及一个小测试程序（不是完整的测试套件）。
 
 ```
 make all
@@ -180,6 +212,8 @@ The cJSON port in vcpkg is kept up to date by Microsoft team members and communi
 
 If you installed it via CMake or the Makefile, you can include cJSON like this:
 
+如果你通过CMake或Makefile安装了它，你可以这样包含cJSON：
+
 ```c
 #include <cjson/cJSON.h>
 ```
@@ -187,6 +221,8 @@ If you installed it via CMake or the Makefile, you can include cJSON like this:
 ### Data Structure
 
 cJSON represents JSON data using the `cJSON` struct data type:
+
+cJSON使用cJSON结构体数据类型来表示JSON数据：
 
 ```c
 /* The cJSON structure: */
