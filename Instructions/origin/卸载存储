@@ -1,6 +1,0 @@
-#!/bin/bash
-if [ $# -ne 1 ]; then
-	echo "参数错了。"
-	exit 1
-fi
-umount $1
