@@ -1,0 +1,4 @@
+echo '后面加一个域名作为参数。'
+if [ $# -eq 1 ]; then
+    dig +short $1
+fi

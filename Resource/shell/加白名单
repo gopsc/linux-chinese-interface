@@ -1,0 +1,6 @@
+
+echo '跟一个ip地址参数。'
+
+if [ $# -eq 1 ]; then
+    iptables -A INPUT -p all -s $1 -j ACCEPT
+fi

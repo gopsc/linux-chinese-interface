@@ -1,0 +1,9 @@
+if [ $# -eq 0 ]; then
+    if [ -e '/etc/iptables/rules.v4' ]; then
+
+        iptables-save > /etc/iptables/rules.v4
+        exit 0
+
+    fi
+fi
+echo '不输入参数，保存防火墙规则。'

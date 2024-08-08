@@ -1,0 +1,4 @@
+if [ $@ -ne 2 ]; then
+    echo '请输入一个有效的设备名。'
+fi
+udevadm info -a -n $1

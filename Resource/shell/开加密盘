@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ $# -ne 2 ]; then
+	echo "参数错了。"
+	exit 1
+fi
+cryptsetup luksOpen $1 $2
