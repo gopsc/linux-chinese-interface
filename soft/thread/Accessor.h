@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstring>
+#include <string.h>
 #include <exception>
 #include <stdexcept>
 #include <unistd.h>
@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include "../script/DScript.h"
 #include "../Printer/StandardPrinter.h"
 #include "../../network/Communication.h"
@@ -108,7 +109,17 @@ namespace qing {
                     }
                         
                 } /* Set socket timeout */
-                
+
+
+		{
+		    int sockfd;
+		    int flag = 1;
+
+		    //设置套接字选项以关闭Nagle算法
+		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+		}
+
+
                 //通用线程::打印("初始化成功");
                 this->run();
 

@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ $PATH == '' ]; then
+	export PATH=/chs
+else
+	export PATH=$PATH:/chs
+fi

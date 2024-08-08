@@ -52,7 +52,7 @@ namespace qing {
                 char ip[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
                 int port = ntohs(addr.sin_port);
-                
+                /* 设置为该线程的标签 */
                 std::string s = std::string(ip) + ":" + std::to_string(port);
                 CommonThread::SetLabel(s);
                 
@@ -69,6 +69,15 @@ namespace qing {
                     if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&t, sizeof(t)) < 0)
                         throw std::runtime_error(std::string("Set socket timeout: ") + strerror(errno));
                 }
+
+		{
+		    int sockfd;
+		    int flag = 1;
+
+		    //设置套接字选项以关闭Nagle算法
+		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+		}
+
 
                 //通用线程::打印("初始化成功。");
                 this->run();

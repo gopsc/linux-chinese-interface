@@ -82,8 +82,8 @@ namespace qing {
             
             //Check if there is data to read
 	    //检查缓冲区中是否还有数据（测试用）
-            int len = checkSocket(sock);
-            //std::cout << "缓冲区剩余数据：\t\t" << len << "\n接收到的长度：\t" << size << "\n";
+            //int len = checkSocket(sock);
+            //std::cout << "缓冲区剩余数据：\t" << len << "\n接收到的长度：\t\t" << size << "\n";
             
 	    //返回接收到的LCI数据体
             return s;

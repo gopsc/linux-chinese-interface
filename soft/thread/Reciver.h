@@ -49,7 +49,7 @@ namespace qing {
             try {
                 /*使用配置文件中设置的端口*/
                 std::string port = CommonThread::GetScript()->Open("配置—接收装置—端口");
-                //*输出*/
+                /*输出*/
                 //CommonThread::Print(std::string("端口开始监听：") + port);
                 
                 /*在堆上新建一个linux服务器类*/
@@ -90,6 +90,14 @@ namespace qing {
                     if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&t, sizeof(t)) < 0)
                         throw std::runtime_error(std::string("Set timeout: ") + strerror(errno));
                 }
+		
+		{
+		    int sockfd;
+		    int flag = 1;
+
+		    //设置套接字选项以关闭Nagle算法
+		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+		}
                 
                 {
                     if (bind(this->sock, (struct sockaddr*)&(this->serveraddr), sizeof(sockaddr_in)) == -1)

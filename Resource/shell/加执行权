@@ -1,0 +1,6 @@
+#!/bin/bash
+if [ $# -lt 1 ]; then
+	echo "$1：参数错误，（$@）"
+	exit 1
+fi
+chmod +x $1

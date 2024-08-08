@@ -1,0 +1,1 @@
+vi /etc/default/grub

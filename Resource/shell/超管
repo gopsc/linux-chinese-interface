@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+	su
+	exit 0
+
+elif [ $# -gt 0 ]; then
+	source 设环境量
+	sudo $@
+	exit 0
+fi
