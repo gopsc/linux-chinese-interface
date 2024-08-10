@@ -2,8 +2,8 @@
 #define __H_StandardPrinter
 
 #include "../../type.h"
-#include "../Painter/Area/Area.h"
 #include "../data/string.h"
+#include "../Painter/Area/Area.h"
 #include "../Painter/CmdPainter.h"
 #include "BasicPrinter.h"
 
@@ -13,12 +13,15 @@
 
 namespace qing{
     class StandardPrinter: public BasicPrinter {
-        /*标准打印机类型，继承自基本打印机类型
-        含有要打印的高度和宽度定义*/
+        /*标准打印机类型，继承自基本打印机类型,含有要打印的高度和宽度定义*/
 
         public:
+	    /*构造函数，在创建时就输入打印机的宽度和高度*/
             StandardPrinter(int w, int h);
+	    /*访问器函数，可以在创建之后重新设置打印机的尺寸*/
             void Set(int w, int h);
+
+	    /*从超类中获取输出池的尾部信息*/
             std::string Get();
             /*以设置的高度和宽度进行打印*/
             void Print(std::string n, std::string s);

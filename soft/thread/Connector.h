@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <exception>
+#include "../../cJSON/cJSON.h"
 #include "../../network/Communication.h"
 #include "../script/DScript.h"
 #include "../Printer/StandardPrinter.h"
@@ -16,7 +17,7 @@ namespace qing {
 	    /*服务器获取连接后，创建该线程与客户端通信
         连接关闭后，也许通过信号机制删除连接池中的连接*/
 	public:
-	    Connector(StandardPrinter* printer, DScript* script, JsonString *jsonString, std::string name, int sock, sockaddr_in addr): CommonThread(printer, script, jsonString, name) {
+	    Connector(StandardPrinter* printer, DScript* script, std::string name, int sock, sockaddr_in addr): CommonThread(printer, script, name) {
 			/*构造函数*/
 			this->sock = sock;
 			this->addr = addr;
@@ -24,17 +25,6 @@ namespace qing {
 		
 		/*暂时删除复制构造函数*/
 		Connector(Connector&) = delete;
-		
-        ~Connector() {
-            /*析构函数，如果不把线程的释放放到这里，将会导致纯虚函数错误*/
-            this->Destroy();
-        }/*析构函数*/
-
-    private:
-    
-        //ClientSocket *sock;
-        int sock;
-        sockaddr_in addr;
         
         void StopEvent() override {
             /*程序睡眠阶段的操作函数，什么也不做*/
@@ -109,18 +99,22 @@ namespace qing {
                 //--------------------------------------------------------------------------------
                 /*检查简报中的指示*/
                 {
-                    
-            	    //std::string InstructionGot = DataReport_in.Open("通信—指示");
-                    JsonString Json_DataReport_In(RcvData);
-                	cJSON *cjsonItem = Json_DataReport_In.get();
+                    /*解析收到的数据*/
+                    cJSON *dataReport = cJSON_Parse(RcvData.c_str());
 
-            	    cJSON *communicationItem = cJSON_GetObjectItem(cjsonItem, "通信");
-            	    if(!communicationItem || !cJSON_IsObject(communicationItem)) throw std::runtime_error("收到错误信息。");
+            	    cJSON *communicationItem = cJSON_GetObjectItem(dataReport, "通信");
+            	    if(!communicationItem || !cJSON_IsObject(communicationItem))
+			throw std::runtime_error("收到错误信息。");
 
             	    cJSON *InstructionItem = cJSON_GetObjectItem(communicationItem, "指示");
-            	    if(!InstructionItem || !cJSON_IsString(InstructionItem)) throw std::runtime_error("收到错误信息。");
+            	    if(!InstructionItem || !cJSON_IsString(InstructionItem))
+			throw std::runtime_error("收到错误信息。");
 
+		    /*获取消息中的指令*/
             	    InstructionGot = std::string(InstructionItem->valuestring);
+
+		    /*清理*/
+                    cJSON_Delete(dataReport);
 
                 }
 
@@ -143,10 +137,6 @@ namespace qing {
                 //--------------------------------------------------------------------------------
                 /*准备要发送的脚本，服务器不主动关闭连接*/
                 {
-                    //DScript DataReport_out;
-    	            //DataReport_out.Add("简报—名字", CommonThread::GetScript()->Open("简报—名字"));
-        	        //DataReport_out.Add("通信—指示", InstructionSend);
-
             	    cJSON *reportItem = cJSON_CreateObject();
                     std::string name = CommonThread::GetScript()->Open("简报—名字");
                 	cJSON_AddItemToObject(reportItem, "名字", cJSON_CreateString(name.c_str()));
@@ -154,12 +144,15 @@ namespace qing {
 	                cJSON *communicationItem = cJSON_CreateObject();
                 	cJSON_AddItemToObject(communicationItem, "指示", cJSON_CreateString(InstructionSend.c_str()));
 
-    	            JsonString Json_DataReport_Out;
-        	        cJSON_AddItemToObject(Json_DataReport_Out.get(), "简报", reportItem);
-        	        cJSON_AddItemToObject(Json_DataReport_Out.get(), "通信", communicationItem);
-
-                    msg = Json_DataReport_Out.print();
-                    //this->Print(msg);
+			cJSON *dataReport = cJSON_CreateObject();
+        	        cJSON_AddItemToObject(dataReport, "简报", reportItem);
+        	        cJSON_AddItemToObject(dataReport, "通信", communicationItem);
+			/*打印*/
+			char *jsonString = cJSON_Print(dataReport);
+                        msg = std::string(jsonString);
+			/*清理*/
+                        free(jsonString);
+                        cJSON_Delete(dataReport);
                 }
                 //--------------------------------------------------------------------------------
 //this->Print("send");
@@ -194,6 +187,13 @@ namespace qing {
             }/*清理阶段异常*/
             
         }/*清除事件*/
+
+
+        private:
+    
+            //ClientSocket *sock;
+            int sock;
+            sockaddr_in addr;
 
     
 	};/*连接器*/

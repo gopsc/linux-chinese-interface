@@ -11,7 +11,6 @@
 
 #pragma once
 #include <iostream>
-#include "../cJSON-master/cJSON.h"
 #include "../type.h"
 
 

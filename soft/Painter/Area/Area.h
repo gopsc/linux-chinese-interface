@@ -4,11 +4,13 @@
 #include <stdint.h>
 #include <iostream>
 #include <stdexcept>
-#include "../../../CImg-3.4.0/CImg.h"
+#include <mutex>
+#include "../../../CImg/CImg.h"
 #include "../../../type.h"
 #include "../font_library/font.h"
 
 //最好使用锁机制进行限定，或者每次由函数生成新的区域
+//static std::mutex lock;
 //在scr/font/ku500.cpp中声明的缓冲区
 extern char image[FTX][FTY];
 //在scr/font/ku500.cpp中声明的绘制字体的函数
@@ -29,6 +31,8 @@ namespace qing {
     浅拷贝、深拷贝、转置、operator[]寻址等方法。
     */
     //------------------------------
+    /* 方案三：基于不同的像素比特，创建不同类型的区域
+     * */
 
     public:
         //构造函数

@@ -1,54 +1,64 @@
 #include "Area.h"
+
+/**/
+static std::mutex lock;
+
 namespace qing{
 
-    //Determine the type of region
-    //basesd on the size of each pixel
     Area::Area(size_t w, size_t h) {
 
         this->w = w;
         this->h = h;
 
-        //this->缓冲区 = malloc((this->宽 * this->高) * sizeof(uint32_t));
-        //if(!缓冲区) throw std::runtime_error(std::string("Area, Constructor: ") + strerror(errno));
-	this->buf = (void*)new uint32_t[w * h];
-    }//Constructor
+	//this->buf = (void*)new uint32_t[w * h];
+	this->buf = malloc(w * h * sizeof(uint32_t));
+	if(!this->buf)//失败
+            throw std::runtime_error(std::string("创建堆内存失败。") + strerror(errno));
+    }//构造函数
     
     Area::Area(std::string path){
+        /* 根据图像地址创建CImg类 */
         cimg_library::CImg<unsigned char> inImage(path.c_str());
-        
+        //取长
         this->w = inImage.width();
         this->h	= inImage.height();
-	this->buf = (void*)new uint32_t[this->w * this->h];
+	/* 很据宽和高创建缓冲区 */
+	//this->buf = (void*)new uint32_t[this->w * this->h];
+	this->buf = malloc(w * h * sizeof(uint32_t));
+	if(!this->buf)//失败
+            throw std::runtime_error(std::string("创建堆内存失败。") + strerror(errno));
+	/*将图像复制到区域中*/
 	for(int w = 0; w < this->w; ++w){
 	    for(int h = 0; h < this->h; ++h){
-	        uint32_t color = inImage(w,h,0) << 16;
+	        //uint32_t color = 255 << 24; //没有效果
+		uint32_t color = 0;
+		color += inImage(w,h,0) << 16;
 	        color += inImage(w,h,1) << 8;
 	        color += inImage(w,h,2) << 0;
-	        //color = color >> 8 << 8;
 	        uint32_t* ptr = (uint32_t*)this->buf;
 	        ptr[h*this->w + w] = color;
-            }
-        }	         
-    }
+            }/*遍历高*/
+        }/*遍历宽*/
+    }//构造函数
     
     Area::~Area() {
-	//Primarily involves releasing the
-	//allocated memory
-        if(this->buf != NULL) delete[] (uint32_t*)buf;
-    } //Destructor
+        /* 用原始的方式释放分配的内存 */
+        //if(this->buf != NULL) delete[] (uint32_t*)buf;
+	if(this->buf) free(this->buf);
+    } //析构函数
     
     
     size_t Area::getw() {
         return this->w;
-    }//Accessor
+    }//访问器
 	
     size_t Area::geth() {
         return this->h;
-    } //Accessor
+    } //访问器
 	
     void* Area::getbuf() {
         return this->buf;
-    } //Accressor
+    } //访问器
 	
 	
     void Area::paint(uint32_t color) {
@@ -72,7 +82,7 @@ namespace qing{
         // 将窗体完整地画到画布上，需要输入一个窗体类型的指针，
         // 以及窗体的位置信息、框体颜色
 	//
-	// fw: frame_width 
+	// fw: frame_width。边框的宽度
 
         //取此区域的宽和高
         size_t w1 = this->w;
@@ -97,27 +107,29 @@ namespace qing{
                 size_t pos1 = (j+y)*w1+(i+x);
                 size_t pos2 = j*w3+i;
                         
-                //p
+                //执行复制
                 buf1[pos1] = buf2[pos2];
                             
                 if (( i < fw || i > w3 - 1 - fw ) || ( j < fw || j > h3 - 1 - fw )) {
-                    //绘制窗体的边框，向内部延申
                     buf1[pos1] = color;
-                }//p
+                } //绘制窗体的边框，向内部延申
                         
 
             }//w
         }//h
 
 	
-    }//paint
+    }//绘制
 	
 	
     void Area::print(char *p, size_t cw, size_t ch, uint32_t color) {
         //在窗体上打印字符
 	//
 	//@qing:使其返回下一个字符的位置
-		
+
+        lock.lock();
+
+
         //将缓冲区指针转换为像素格式
         uint32_t *p1 = (uint32_t*)this->buf;
         //盒子，用于储存将要打印的字符
@@ -184,6 +196,8 @@ namespace qing{
         }
 
 
-        }
+	lock.unlock();
 
-    }//print
+        }//打印
+
+    }//qing

@@ -15,7 +15,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "../cJSON-master/cJSON.h"
+#include "../cJSON/cJSON.h"
 #include "../type.h"
 
 namespace qing {
@@ -77,7 +77,7 @@ namespace qing {
         //Check if there is data to read
         //检查缓冲区中是否还有数据（测试用）
         int len2 = checkSocket(sock);
-        std::cout << "缓冲区剩余数据：\t" << len2 << "\n";
+        //std::cout << "缓冲区剩余数据：\t" << len2 << "\n";
             
         //返回接收到的LCI数据体
         return s;

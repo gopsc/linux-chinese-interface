@@ -11,7 +11,7 @@ namespace qing {
         public:
             PrinterData(double t, std::string n, std::string s);
         //private:
-            double		t;
+            double	t;
             std::string	n;
             std::string	s;
     };

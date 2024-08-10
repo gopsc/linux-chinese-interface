@@ -4,7 +4,7 @@
 #cpr=/mnt/1/qs_20240801/src/tools-master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-g++
 cpr=clang++
 
-cop='-std=c++20 -lX11 -lpthread'
+cop='-std=c++17 -lX11 -lpthread'
 #cop='-lX11 -lpthread'
 dop=''
 out_name='lci'
@@ -22,7 +22,7 @@ fi
 
 #继续定义参数
 in_names=(\
-    "cJSON-master/cJSON" \
+    "cJSON/cJSON" \
     "main" \
     "network/Communication"
     "soft/model/fsm" \
@@ -48,6 +48,9 @@ logs=()
 #遍历输入
 for name in "${in_names[@]}"; do
     input="${name}.cpp"
+    if [ ! -f "${input}" ]; then
+	    input="${name}.c"
+    fi
     output="./build/${name}.o"
     log="./build/${name}.log"
     #创建文件夹

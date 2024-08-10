@@ -16,17 +16,11 @@ namespace qing {
 	 */		
 	public:
 	    /*构造函数*/
-	    CompileManager(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name): CommonThread(printer, script, jsonString, name) {}
+	    CompileManager(StandardPrinter *printer, DScript *script, std::string name): CommonThread(printer, script, name) {}
 	    /*暂时删除复制构造函数*/
 	    CompileManager(CompileManager&) = delete;
+
 	    
-	    ~CompileManager(){
-			this->Destroy();
-		}/*析构函数*/
-		
-	private:
-        
-        
         static std::vector<std::string> Split(std::string s, std::string word) {
 			//将字符串分割，并装入向量中返回
 			std::vector<std::string> vt;

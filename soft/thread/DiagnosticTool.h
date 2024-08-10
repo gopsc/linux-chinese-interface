@@ -24,15 +24,11 @@ namespace qing{
 
     public:
         /*构造函数*/
-        DiagnosticTool (StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name) : CommonThread(printer, script, jsonString, name)  {}
+        DiagnosticTool (StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name)  {}
         /*暂时删除复制构造函数*/
         DiagnosticTool(DiagnosticTool&) = delete;
+
         
-        ~DiagnosticTool(){
-            this->Destroy();
-        }/*析构函数，必须在这里调用*/
-        
-    protected:
         void StopEvent() override {
             /*程序睡眠阶段的操作函数。*/
             /*线程挂起*/

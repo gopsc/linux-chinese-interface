@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include "../../cJSON/cJSON.h"
 #include "../script/DScript.h"
 #include "../Printer/StandardPrinter.h"
 #include "../../network/Communication.h"
@@ -25,16 +26,11 @@ namespace qing {
     /*访问器类型，继承自通用线程类型*/    
     public:
         /*构造函数，首先调用父类的构造*/
-        Accessor(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name) : CommonThread(printer, script, jsonString, name) {}
+        Accessor(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {}
         /*暂时删除复制构造函数*/
         Accessor(Accessor&) = delete;
-        
-        ~Accessor() {
-            this->Destroy();
-        }/*析构函数，如果不把线程的释放放到这里，将会导致纯虚函数错误*/
-        
-    protected:
-    
+   
+
         void StopEvent() override {
             /*程序睡眠阶段的操作函数，线程等待*/
             this->suspend();
@@ -161,30 +157,28 @@ namespace qing {
                         cJSON_AddStringToObject(reportItem, "名字", name.c_str());                    
 
                         /*将指示发送过去*/
-		        		//std::string sendstr = CommonThread::ReadScript("指示—发送");
-                        //tmp1.Add("通信—指示", sendstr == "" ? "关闭连接" : sendstr);
                         cJSON *communicationItem = cJSON_CreateObject();
                         std::string sendstr = CommonThread::ReadScript("指示—发送");
                         std::string instruction = sendstr == "" ? "关闭连接" : sendstr;
                         cJSON_AddStringToObject(communicationItem, "指示", instruction.c_str());
                         if (sendstr != "") CommonThread::GetScript()->Del("指示—发送"); 
-
-                        JsonString Json_DataReport_Out;
-                        cJSON_AddItemToObject(Json_DataReport_Out.get(), "简报", reportItem);
-                        cJSON_AddItemToObject(Json_DataReport_Out.get(), "通信", communicationItem);
-
-                        msg_out = Json_DataReport_Out.print();
+			/*创建根结点*/
+			cJSON *dataReport = cJSON_CreateObject();
+                        cJSON_AddItemToObject(dataReport, "简报", reportItem);
+                        cJSON_AddItemToObject(dataReport, "通信", communicationItem);
+                        char *jsonString = cJSON_Print(dataReport);
+                        msg_out = std::string(jsonString);
+			/*清理*/
+			free(jsonString);
+			cJSON_Delete(dataReport);
                     }
 
 //this->Print("send");
                     /*文本形式发送*/
-                    //clent->send_msg(clent->getSocket(), tmp1.toStr());
-                    //clent->send_msg(clent->getSocket(), msg_out);
                     Communication::send_msg(this->sock, msg_out);
 
 //this->Print("recv");
                     /*文本形式接收*/
-                    //std::string recv_msg = clent->recv_msg(clent->getSocket());
                     std::string recv_msg = Communication::recv_msg(this->sock);
 //this->Print(recv_msg);
                     //通用线程::打印(接收);
@@ -193,23 +187,30 @@ namespace qing {
 
 //this->Print("analyze");
                     {
-                        //DScript tmp2(recv_msg);
-                        //std::string InstructionGot = tmp2.Open("通信—指示");
-                        JsonString Json_DataReport_In(recv_msg);
-                    	cJSON *cjsonItem = Json_DataReport_In.get();
+			/*解析收到的数据*/
+			cJSON *dataReport = cJSON_Parse(recv_msg.c_str());
 
-            	        cJSON *communicationItem = cJSON_GetObjectItem(cjsonItem, "通信");
-            	        if(!communicationItem || !cJSON_IsObject(communicationItem)) throw std::runtime_error("收到错误信息。");
+            	        cJSON *communicationItem = cJSON_GetObjectItem(dataReport, "通信");
+            	        if(!communicationItem || !cJSON_IsObject(communicationItem))
+                            throw std::runtime_error("收到错误信息。");
 
             	        cJSON *InstructionItem = cJSON_GetObjectItem(communicationItem, "指示");
-            	        if(!InstructionItem || !cJSON_IsString(InstructionItem)) throw std::runtime_error("收到错误信息。");
+            	        if(!InstructionItem || !cJSON_IsString(InstructionItem))
+                            throw std::runtime_error("收到错误信息。");
 
+			/*获取数据中的指示*/
             	        InstructionGot = std::string(InstructionItem->valuestring);
+
+			/*清理*/
+			cJSON_Delete(dataReport);
                     }
 
                     if		(InstructionGot == "关闭连接")	this->stop();
                     else if	(InstructionGot == "保持联络")	CommonThread::WriteScript("指示—发送", "保持联络");
-                    //usleep(100000);
+
+
+                    usleep(100000);
+		    //this->stop();
                 }/*开始交流*/
                 
                 /*循环被跳出，即是收到了结束信号*/

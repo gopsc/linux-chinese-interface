@@ -22,19 +22,13 @@ namespace qing{
         /*录入器类型，继承自通用线程类型*/    
         public:
             
-            EntryToolThread(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name, std::string path) : CommonThread(printer, script, jsonString, name) {
+            EntryToolThread(StandardPrinter *printer, DScript *script, std::string name, std::string path) : CommonThread(printer, script, name) {
                 this->path = path;
             }/*构造函数，首先调用父类的构造*/
             
             /*暂时删除复制构造函数*/
             EntryToolThread(EntryToolThread&) = delete;
             
-            ~EntryToolThread() {
-                this->Destroy();
-            }/*析构函数，如果不把线程的释放放到这里，将会导致纯虚函数错误*/
-            
-        protected:
-        
         //----------------------------------------------------------
 
             static std::string prepare_label(std::string path){

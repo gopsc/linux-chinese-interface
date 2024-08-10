@@ -1,24 +1,20 @@
 
 #include "CommonThread.h"
-
+extern qing::StandardPrinter *printer;
 namespace qing {
 	 
-    CommonThread::CommonThread(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name) {
+    CommonThread::CommonThread(StandardPrinter *printer, DScript *script, std::string name) {
         /*构造函数，完成数据域的设置。*/
         this->label = name;
         this->printer = printer;
         this->script = script;
-        this->jsonString = jsonString;
         //创建线程的函数
-        this->thread = new std::thread(this->main, this, this->printer, this->label);
+        this->thread = new std::thread(this->main, this);
     }
     
-    void CommonThread::Destroy() {
-        //结束线程的函数
-        
+    CommonThread::~CommonThread(){
         if (this->thread != NULL){
             //清除线程
-
 std::cout << std::string("Close:\t") + this->label + "\n";
             
             if (this->chk() != SSHUT){
@@ -26,9 +22,8 @@ std::cout << std::string("Close:\t") + this->label + "\n";
             }
             this->WaitClose();//等待线程退出
             delete this->thread;//删除线程类
+    }
 
-        }
-            
     } //销毁线程
     
         
@@ -55,10 +50,6 @@ std::cout << std::string("Close:\t") + this->label + "\n";
         return this->script;
     }//取脚本
 
-    JsonString *CommonThread::GetJsonString(){
-        return this->jsonString;
-    }
-
     //-----------------------------------------------------------
     //将数据发送到打印机类        
              
@@ -75,13 +66,13 @@ std::cout << std::string("Close:\t") + this->label + "\n";
     //-----------------------------------------------------------
     /*通常情况下，线程的主函数。*/
         
-    void CommonThread::main(CommonThread *th, StandardPrinter *printer, std::string name) {
-        //printer->Print(name, "线程启动。");
+    void CommonThread::main(CommonThread *th) {
+::printer->Print(th->GetLabel(), "线程启动。");
             
         while (th->chk() != SSHUT) {
             /*进入回字形循环，如果不是进入关闭态
             内层循环会一直进行。*/         
-            //printer->打印(name, "进入循环。");
+::printer->Print(th->GetLabel(), "进入循环。");
                     
             if (th->chk() == SSTOP){
                 /*内层循环，静止状态*/
@@ -91,13 +82,13 @@ std::cout << std::string("Close:\t") + this->label + "\n";
             if (th->chk() == SSTART) {
                 /*由静止状态退出时，如果进入开始状态
                 则进入单次的设置操作*/
-                //printer->Print(name,"被唤醒。");
+::printer->Print(th->GetLabel(),"被唤醒。");
                 th->WakeEvent();
             }
 
             if (th->chk() == SRUNNING) {
                 /*由设置阶段退出时，如果是运行状态，则发出提示*/
-                //printer->Print(name,"开始运转。");
+::printer->Print(th->GetLabel(),"开始运转。");
             }
 
             while (th->chk() == SRUNNING) {
@@ -108,11 +99,11 @@ std::cout << std::string("Close:\t") + this->label + "\n";
             /*循环末尾，进行一次清理
             由于之前可能是由静止态直接切换到关闭工作
             在清理时需要检查成员变量是否是被设置过的*/
-            //printer->Print(name, "开始清理。");
+::printer->Print(th->GetLabel(), "开始清理。");
             th->ClearEvent();
         }
             
-        //printer->Print(name, "线程退出。");
+::printer->Print(th->GetLabel(), "线程退出。");
     }//入口
 
 }

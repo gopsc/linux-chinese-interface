@@ -20,17 +20,12 @@ namespace qing{
         /*录入器类型，继承自通用线程类型*/    
         public:
             
-            EntryManagerTh(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name) : CommonThread(printer, script, jsonString, name) {
+            EntryManagerTh(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {
             }/*构造函数，首先调用父类的构造*/
             
             /*暂时删除复制构造函数*/
             EntryManagerTh(EntryManagerTh&) = delete;
             
-            ~EntryManagerTh() {
-                this->Destroy();
-            }/*析构函数，如果不把线程的释放放到这里，将会导致纯虚函数错误*/
-     
-        protected:
         
             void StopEvent() override {
                 /*程序睡眠阶段的操作函数，线程等待*/
@@ -54,7 +49,7 @@ namespace qing{
                         /*准备线程的名字*/
                         std::string name = std::string("录入工具") + std::to_string(num++);
                         /*启动线程*/
-                        EntryToolThread *entryTool = new EntryToolThread(CommonThread::GetPrinter(), CommonThread::GetScript(), CommonThread::GetJsonString(), name, path);
+                        EntryToolThread *entryTool = new EntryToolThread(CommonThread::GetPrinter(), CommonThread::GetScript(), name, path);
                         entryTool->wake(); entryTool->WaitStart(1);
                         /*推入线程池*/
                         this->pool.push_back(entryTool);

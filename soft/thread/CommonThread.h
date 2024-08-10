@@ -6,7 +6,6 @@
 #include "../../type.h"
 #include "../model/fsm.h"
 #include "../Printer/StandardPrinter.h"
-#include "../script/JsonString.h"
 #include "../script/DScript.h"
 
 /*
@@ -27,10 +26,12 @@ namespace qing {
     class CommonThread: public Fsm{
         //一个通常情况下的线程类型        
         public:  
-            //构造函数
-            CommonThread(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name);
+            //构造函数.
+	    //没有必要输入打印机、脚本、线程的名字，放到全局变量
+            CommonThread(StandardPrinter *printer, DScript *script, std::string name);
             //如果把析构函数放在这里，将会导致纯虚函数错误
-            //...
+            virtual ~CommonThread();
+
             //对线程名字的设置
             void SetLabel(std::string name);
             //对线程名字的获取
@@ -39,7 +40,6 @@ namespace qing {
             StandardPrinter* GetPrinter();
             //获取csc字典的地址
             DScript* GetScript();
-            JsonString* GetJsonString();
             //-----------------------------------------------------------
             bool WaitStart(float time) {
                 //等待线程启动完毕
@@ -59,11 +59,6 @@ namespace qing {
             }//等线程关闭
         
         protected:
-            //-----------------------------------------------------------
-            //用来被构造函数和析构函数调用的方法
-        
-            //结束线程的函数
-            void Destroy();
         
             //-----------------------------------------------------------
             //将数据发送到打印机类
@@ -83,6 +78,27 @@ namespace qing {
                 this->script->Add(k,v);
             }//写脚本
             //-----------------------------------------------------------
+
+            //程序睡眠阶段的操作函数。
+            virtual void StopEvent(){
+	        this->Print("注意，原始等待函数被调用");
+	    }
+            //程序设置阶段的操作函数。
+            virtual void WakeEvent(){
+	        this->Print("注意，原始唤醒函数被调用");
+	    }
+            //程序运行阶段的操作函数。
+            virtual void LoopEvent(){
+	        this->Print("注意，原始循环体被调用");
+	    }
+            //程序清理阶段的操作函数。
+            virtual void ClearEvent(){
+	        this->Print("注意，原始清理函数被调用。");
+	    }
+
+            //可以将操作函数作为一种事件，可以从外界传入写好的事件函数，
+            //那么就需要将操作函数设定为静态函数
+
         
         private:
         
@@ -92,26 +108,13 @@ namespace qing {
             StandardPrinter *printer;
             //用于存放配置文件的CSC类
             DScript *script;     
-            JsonString *jsonString;   
             //用来存放该子线程的标识符。
             std::thread *thread = NULL;
 
             //-----------------------------------------------------------
             //通常情况下，线程的主函数。
         
-            static void main(CommonThread *th, StandardPrinter *printer, std::string name);
-
-            //程序睡眠阶段的操作函数。
-            virtual void StopEvent() = 0;
-            //程序设置阶段的操作函数。
-            virtual void WakeEvent() = 0;
-            //程序运行阶段的操作函数。
-            virtual void LoopEvent() = 0;
-            //程序清理阶段的操作函数。
-            virtual void ClearEvent() = 0;
-
-            //可以将操作函数作为一种事件，可以从外界传入写好的事件函数，
-            //那么就需要将操作函数设定为静态函数
+            static void main(CommonThread *th);
 
         };
 }

@@ -27,16 +27,10 @@ namespace qing {
         /*创建一个信使线程，相当于一个基本的服务器程序*/
     public:
         /*构造函数*/
-        Reciver(StandardPrinter *printer, DScript *script, JsonString *jsonString, std::string name) : CommonThread(printer, script, jsonString, name) {}
+        Reciver(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {}
         /*暂时删除复制构造函数*/
         Reciver(Reciver&) = delete;
-
-        ~Reciver() {
-            this->Destroy();
-        }/*析构函数，如果不把线程的释放放到这里，将会导致纯虚函数错误*/
         
-    protected:
-    
         void StopEvent() override {
             /*程序睡眠阶段的操作函数，什么也不做*/
             this->suspend();
@@ -129,10 +123,11 @@ namespace qing {
                 socklen_t l = sizeof(clientaddr);
                 int clientsock = accept(this->sock, (struct sockaddr*)&clientaddr, &l);
                 if (clientsock == -1) throw std::runtime_error(std::string("Create client socket: ") + strerror(errno));
+//this->PrintOnly(std::to_string(clientsock));
                 
                 /*建立交流线程*/
                 std::string name = std::string("交谈") + std::to_string(++num);
-                Connector *connector = new Connector(CommonThread::GetPrinter(), CommonThread::GetScript(), CommonThread::GetJsonString(), name, clientsock, clientaddr);
+                Connector *connector = new Connector(CommonThread::GetPrinter(), CommonThread::GetScript(), name, clientsock, clientaddr);
                 connector->wake();
                 connector->WaitStart(1);
 
@@ -146,26 +141,30 @@ namespace qing {
                 //通用线程::打印("重新运行。");
             }/*接收连接失败，这里的异常是接收失败导致的，不用管*/
             
-            
-            for (int i = pool.size() - 1; i > -1; --i) {
-                /*检查连接池的长度*/
-                //通用线程::打印(std::to_string(i));
-                if (pool[i]->chk() == SSHUT) {
-                    delete pool[i];
-                    pool.erase(pool.begin() + i);
-		    break;/*一次只删除一个元素*/
-                }/*该连接的交流已经停止，移除元素*/
-            }/*维护连接池*/
-                
+            if(this->chk() == SRUNNING){
+            /*如果不放在条件分支中，将会导致段错误，不知道为什么*/
+
+                for (int i = pool.size() - 1; i > -1; --i) {
+                    /*检查连接池的长度*/
+                    if (pool[i]->chk() == SSHUT) {
+                        delete pool[i];
+                        pool.erase(pool.begin() + i);
+                        break;/*一次只删除一个元素*/
+                    }/*该连接的交流已经停止，移除元素*/
+                }/*维护连接池*/
+
+	    }
+
         }/*循环体*/
             
 
         void ClearEvent() override {
             /*程序清理阶段的操作函数。*/
+CommonThread::Print("清除程序启动。");
             
             try {
                 
-                for(int i=pool.size()-1; i>-1; i--) {
+                for(int i=pool.size()-1; i>=0; i--) {
                     delete pool[i];
                 }/*遍历线程池，关闭所有连接*/
                 pool.clear();
@@ -177,8 +176,8 @@ namespace qing {
                     this->sock = -1;
                 } /*删除伺服器*/
                 
-                //*执行成功*/
-                //CommonThread::Print("清除。");
+                /*执行成功*/
+CommonThread::Print("清除。");
             }
             
             catch (std::exception e) {

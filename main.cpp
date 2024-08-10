@@ -16,7 +16,6 @@
 
 #include "soft/system-call/FilesystemOp.h"
 #include "soft/script/DScript.h"
-#include "soft/script/JsonString.h"
 #include "soft/terminal/DisableEcho.h"
 #include "soft/terminal/HideCursor.h"
 #include "soft/Printer/StandardPrinter.h"
@@ -50,8 +49,15 @@ qing::DisableEcho disableEcho;
 qing::HideCursor  hideCursor;
 #endif
 
-/* 将绘图器加入到局部变量当中 */
+/* 打印机 */
+qing::StandardPrinter *printer = new qing::StandardPrinter(1024, 1);
+/*全局的脚本*/
+qing::DScript *script = NULL;
+/* 绘图器 */
 qing::CmdPainter *painter = NULL;
+/* 线程池 */
+std::vector<qing::CommonThread*> pool(10, NULL);
+    
 
 int main(int argc, char **argv) {
 
@@ -61,14 +67,10 @@ int main(int argc, char **argv) {
  * ）
  */
     std::string confPath = "/etc/lci/configure.csc";
-    std::string confp = "/etc/lci/configure.json";
     if (argc == 2) confPath = argv[1];
-    
-    qing::StandardPrinter	printer(1024, 1);
-    qing::DScript		script(qing::FilesystemOp::Readfile(confPath));
-    qing::JsonString		script1(qing::FilesystemOp::Readfile(confp));
-
-    painter = new qing::CmdPainter(&printer, &script, "/etc/lci/logo.jpg");
+  
+    script = new qing::DScript(qing::FilesystemOp::Readfile(confPath));
+    painter = new qing::CmdPainter(printer, script, "/etc/lci/logo.jpg");
 
 
 /*
@@ -80,38 +82,31 @@ int main(int argc, char **argv) {
  * 封装成声明类型。
  * ）
  */
-    std::vector<qing::CommonThread> pool;
+    pool[0] = new qing::EntryManagerTh(printer, script, "输入管1");
+    pool[1] = new qing::Reciver(printer, script, "接收器1");
+    pool[2] = new qing::Accessor(printer, script, "访问器1");
     
-    qing::EntryManagerTh *entryManagerTh = new qing::EntryManagerTh(&printer, &script, &script1, "输入管1");
-    entryManagerTh->wake();
-    entryManagerTh->WaitStart(1);
-
-    qing::Reciver *reciver = new qing::Reciver(&printer, &script, &script1, "接收器1");
-    reciver->wake();
-    reciver->WaitStart(1);
-    
-    qing::Accessor *accessor = new qing::Accessor(&printer, &script, &script1, "访问器1");
-    accessor->wake();
-    accessor->WaitStart(1);
-    
-
 /*
     //编译线程
-    qing::CompileManager *compileManager = new qing::CompileManager(&printer, &script, &script1, "管理器1");
-    compileManager->wake();
-    compileManager->WaitStart(1);
-    delete compileManager;
+    pool[3] = new qing::CompileManager(printer, script, "管理器1");
 */    
+    for (int i=0; i<pool.size(); ++i){
+        if(pool[i]){
+            pool[i]->wake();
+            pool[i]->WaitStart(1);
+        }
+    }
 
 #ifndef DEBUG
     system("chvt 8");
 #endif
 
-    printer.Print("", "你好，操作员。系统已经开始运转。\n");
+    printer->Print("", "你好，操作员。系统已经开始运转。\n");
+    sleep(1);
 
+    //script->Add("进程—状态", "运行");
     /*用脚本来控制开关状态。*/
-    script.Add("进程—状态", "运行");
-    while(script.Open("进程—状态") == "运行") {
+    while(script->Open("进程—状态") == "运行") {
         usleep(10000);
     }
 
@@ -119,11 +114,16 @@ int main(int argc, char **argv) {
     system("chvt 1");
 #endif
     
-    delete entryManagerTh;
-    delete accessor;
-    delete reciver;	
+    for (int i=0; i<pool.size(); i++){
+        if(pool[i]){
+	    delete pool[i];
+	    pool[i] = NULL;
+	}
+    }
     //sleep(1);
     delete painter;
+    delete script;
+    delete printer;
 
     std::cout << "\nprogram shut.\n";
     while(true) usleep(100000);

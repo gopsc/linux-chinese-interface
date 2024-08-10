@@ -22,7 +22,10 @@
 namespace qing {
 
 
-    /*colors*/	
+    /*colors
+     * 颜色代码，一些适用于32像素比特，一些适用于16像素比特
+     * 我们可以以RGB色来定义颜色，保存在一个自行构建的颜色类中
+     * */	
     const uint32_t BLACK32 = 0x000000;
     const uint32_t WHITE32 = 0xffffff;
     const uint32_t GREEN32 = 0x00ff00;
@@ -61,43 +64,57 @@ namespace qing {
             
             std::mutex lk;
             Area *a0 = NULL; //整个屏幕区域
+			     //
             /*双缓冲区*/
             //Area *buf = NULL;
             
+	    /*字体大小*/
             int char_w, char_h; //命令行用
             int char_w1, char_h1; //状态栏用
-            int char_w2, char_h2; //for title
+            int char_w2, char_h2; //标题用
+
+            /*区域的边框宽度*/
             int border_w0, border_w1, border_w2;
 
-            int w4, h4, x4, y4; //输入栏
+	    /* 输入栏 */
+            int w4, h4, x4, y4;
             Area *a4 = NULL; 
 
-            int w2, h2, x2, y2; //状态栏
-            Area *a2 = NULL; //状态栏
+	    /* 状态栏 */
+            int w2, h2, x2, y2;
+            Area *a2 = NULL;
 
-            int w2_1, h2_1, x2_1, y2_1; //title
+	    /* 标题 */
+            int w2_1, h2_1, x2_1, y2_1;
             Area *a2_1 = NULL;
 
-            int w3, h3, x3, y3; //命令行界面        
+	    /* 命令行界面 */
+            int w3, h3, x3, y3;      
             Area *a3 = NULL;
 
-            int w3_1, h3_1, x3_1, y3_1; //显示文字的区域
+	    /* 显示文字的区域 */
+            int w3_1, h3_1, x3_1, y3_1;
             Area *a3_1 = NULL;
             
         //----------------------------------------------------------
+	    /* 将所有子区域到母区域上面 */
             void Paint();
             
+	    /* 将主区域刷新到帧缓冲设备上面 */
             void flush();
             
         private:
-            //BasicLinuxScreen *screen = NULL;
-            int w, h; //主要缓冲区用
-            bool rand;//旋转
+	    
+	    /* 主要缓冲区的长度和宽度 */
+            int w, h;
+            bool rand;/*是否旋转*/
             
-            int fd;
-            struct fb_var_screeninfo var_info;
-            struct fb_fix_screeninfo fix_info;
-            void* frameBuf = NULL;//帧缓冲的内存地址，设备映射到这里
+            int fd; /*帧缓冲设备的文件描述符*/
+            struct fb_var_screeninfo var_info; /* 帧缓冲设备的可变参数 */
+            struct fb_fix_screeninfo fix_info; /* 帧缓冲设备的固定参数 */
+
+	    /* 帧缓冲内存地址 */
+            void* frameBuf = NULL;
         
     }; //命令行绘图机
 

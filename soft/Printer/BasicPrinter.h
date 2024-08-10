@@ -10,11 +10,14 @@
 #include "PrinterData.h"
 #include "PaperCutter.h"
 
+#define PRINTER_MAXLINE 100
+
 namespace qing {
     
     class BasicPrinter: public Unit {
-        /*基本打印机类型，用于向某种输出设备提供经过处理的字符串*/
+        /*基本打印机类型，用于向输出设备提供经过处理的字符串*/
         private:
+            /*锁，我们是多线程项目，而同一时间只有一个设备可以输出*/
             std::mutex lk;
             /*输出池，向量*/
             std::vector<PrinterData> outPool;
