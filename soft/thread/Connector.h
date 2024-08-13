@@ -8,8 +8,16 @@
 #include "../../cJSON/cJSON.h"
 #include "../../network/Communication.h"
 #include "../script/DScript.h"
+#include "../script/JsonInterface.h"
 #include "../Printer/StandardPrinter.h"
 #include "CommonThread.h"
+
+/*main.cpp*/
+extern bool isDebug;
+/*定义在main.c中的输出管理类型*/
+//extern qing::StandardPrinter *printer;
+/*定义在main.c中的全局脚本类型*/
+//extern qing::DScript *script;
 
 namespace qing {
 	
@@ -17,14 +25,19 @@ namespace qing {
 	    /*服务器获取连接后，创建该线程与客户端通信
         连接关闭后，也许通过信号机制删除连接池中的连接*/
 	public:
-	    Connector(StandardPrinter* printer, DScript* script, std::string name, int sock, sockaddr_in addr): CommonThread(printer, script, name) {
-			/*构造函数*/
+	    Connector(std::string name, int sock): CommonThread(name) {
 			this->sock = sock;
-			this->addr = addr;
-		}
+		}/*构造函数*/
+	    /*析构函数，关闭线程*/
+	    ~Connector(){
+                if (this->chk() != SSHUT){
+                    this->close();//使线程自主关闭
+                }
+                this->WaitClose();//等待线程退出
+	    }
 		
-		/*暂时删除复制构造函数*/
-		Connector(Connector&) = delete;
+	    /*暂时删除复制构造函数*/
+	    Connector(Connector&) = delete;
         
         void StopEvent() override {
             /*程序睡眠阶段的操作函数，什么也不做*/
@@ -36,43 +49,32 @@ namespace qing {
             /*程序设置阶段的操作函数。*/
 
             try {
-                /* 获取连接者的IP地址 */
-                //CommonThread::Print(std::string("有客户端连接。") + sock->getIp());
-                //CommonThread::SetLabel(sock->getIp());
-                char ip[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
-                int port = ntohs(addr.sin_port);
-                /* 设置为该线程的标签 */
-                std::string s = std::string(ip) + ":" + std::to_string(port);
-                CommonThread::SetLabel(s);
-                
 
                 //sock->setBlockTime(2);
                 {
                     struct timeval t;
-                    t.tv_sec = 2;
+                    t.tv_sec = 1;
                     t.tv_usec = 0;
                     
                     if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&t, sizeof(t)) < 0)
-                        throw std::runtime_error(std::string("Set socket timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间失败。") + strerror(errno));
                         
                     if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&t, sizeof(t)) < 0)
-                        throw std::runtime_error(std::string("Set socket timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间失败。") + strerror(errno));
                 }
 
 		{
-		    int sockfd;
 		    int flag = 1;
 
 		    //设置套接字选项以关闭Nagle算法
-		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+		    if(setsockopt(this->sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag)) < 0)
+			throw std::runtime_error(std::string("关闭Nagle算法失败。"));
 		}
 
-
-                //通用线程::打印("初始化成功。");
+                //::printer->Print("","初始化成功。");
                 this->run();
             } catch (std::exception& e) {/*设置阶段异常*/
-                CommonThread::Print(std::string("程序在设置阶段出现异常：") + e.what());
+                ::printer->Print("",std::string("连接器程序在设置阶段出现异常：") + e.what());
                 this->stop(); return;
             }/*设置阶段异常*/
             
@@ -83,19 +85,18 @@ namespace qing {
             /*程序运行阶段的操作函数。开始交流*/
 
             try {
-                /*一会儿我们将其改为以事件队列驱动*/
-//this->Print("recive");
+                /*一会儿我们将其改为以事件队列驱动
+		 *
+		 * 接收和发送LCI消息*/
+
                 /*接收数据*/
+                if (isDebug) printer->Print(this->GetLabel(),"recive");
                 std::string RcvData = "";
 		RcvData = Communication::recv_msg(this->sock);
-                //通用线程::打印(收到数据);
-		if (RcvData == "") throw std::runtime_error("未收到数据。");
                     
-                /*读取接收到的csc*/
-                //DScript DataReport_in(RcvData);
+                /*读取接收到的指示*/
 		std::string InstructionGot;
-
-//this->Print("analyze");
+                if(isDebug) printer->Print(this->GetLabel(),"analyze");
                 //--------------------------------------------------------------------------------
                 /*检查简报中的指示*/
                 {
@@ -104,11 +105,11 @@ namespace qing {
 
             	    cJSON *communicationItem = cJSON_GetObjectItem(dataReport, "通信");
             	    if(!communicationItem || !cJSON_IsObject(communicationItem))
-			throw std::runtime_error("收到错误信息。");
+			throw JsonInterface::JsonParseError("非法的LCI消息。");
 
             	    cJSON *InstructionItem = cJSON_GetObjectItem(communicationItem, "指示");
             	    if(!InstructionItem || !cJSON_IsString(InstructionItem))
-			throw std::runtime_error("收到错误信息。");
+			throw JsonInterface::JsonParseError("非法的LCI消息。");
 
 		    /*获取消息中的指令*/
             	    InstructionGot = std::string(InstructionItem->valuestring);
@@ -120,7 +121,6 @@ namespace qing {
 
                 //--------------------------------------------------------------------------------
                 /*尝试将数据保存到全局配置*/
-                //对象->取脚本()->添加("简报—处理器", tmp1.open("简报—处理器"));
 
                 std::string InstructionSend = "关闭连接";
                 if (InstructionGot == "关闭连接"){
@@ -129,16 +129,16 @@ namespace qing {
                 else if	(InstructionGot == "保持联络") InstructionSend = "保持联络";
 	       else {
 	           this->close();
-		   CommonThread::Print(InstructionGot);
+		   ::printer->Print("",InstructionGot);
 	      }
                 
-//this->Print("prepare");
+                if(isDebug) ::printer->Print(this->GetLabel(),"prepare");
                 std::string msg;
                 //--------------------------------------------------------------------------------
                 /*准备要发送的脚本，服务器不主动关闭连接*/
                 {
             	    cJSON *reportItem = cJSON_CreateObject();
-                    std::string name = CommonThread::GetScript()->Open("简报—名字");
+                    std::string name = ::script->Open("简报—名字");
                 	cJSON_AddItemToObject(reportItem, "名字", cJSON_CreateString(name.c_str()));
 
 	                cJSON *communicationItem = cJSON_CreateObject();
@@ -155,17 +155,26 @@ namespace qing {
                         cJSON_Delete(dataReport);
                 }
                 //--------------------------------------------------------------------------------
-//this->Print("send");
+                if (isDebug) ::printer->Print(this->GetLabel(),"send");
+
                 /*发送数据*/
                 //sock->send_msg(sock->getSocket(), DataReport_out.toStr());
                 Communication::send_msg(this->sock, msg);    
                     
-            } catch (std::exception& e) {
-                CommonThread::Print(std::string("连接断开：") + e.what());
+            }
+	    catch (Communication::CommuniError& e) {
+                ::printer->Print("",std::string("连接断开，因为") + e.what());
                 this->close();
             }/*通信异常*/
-            
-		}/*循环体*/
+	    
+	    catch (JsonInterface::JsonParseError& e){
+	        ::printer->Print("",std::string("解析失败，因为") + e.what());
+		this->close();
+	    }
+            // catch (std::exception& e) {
+            // }
+
+	}/*循环体*/
             
 
         void ClearEvent() override {
@@ -178,11 +187,11 @@ namespace qing {
                     ::close(this->sock);
                     this->sock = -1;
                     /*执行成功*/
-                    //CommonThread::Print("清除。");
+                    //::printer->Print("","清除。");
                 } /*删除伺服器*/
 
             } catch(std::exception e) {
-                CommonThread::Print(std::string("清理时出错：") + e.what());
+                ::printer->Print("",std::string("清理时出错：") + e.what());
                 this->stop();
             }/*清理阶段异常*/
             
@@ -193,7 +202,6 @@ namespace qing {
     
             //ClientSocket *sock;
             int sock;
-            sockaddr_in addr;
 
     
 	};/*连接器*/

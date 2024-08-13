@@ -1,6 +1,9 @@
 
 #include "StandardPrinter.h"	
 
+/*main.cpp*/
+extern bool isDebug;
+
 /*在main.cpp中定义的命令行绘图器，用于绘制命令行界面*/
 extern qing::CmdPainter *painter;
     
@@ -25,25 +28,25 @@ namespace qing {
         /*以设置的高度和宽度进行打印*/
         BasicPrinter::Print(n, s);
 
-#ifdef DEBUG
-        if (n != "") std::cout << n + "  " + s << std::endl;
-        else std::cout << s << std::endl;
-#else
-	/*为绘图器加锁*/
-        painter->lk.lock();
-        /*从绘图器获取命令行区域*/
-        Area *a1 = painter->a3_1;
-	/*从超类中获取输出池尾部的信息，并且转化为ANSI编码*/
-        char *ansi_str = string::utf8_to_ansi((char*)this->Get().c_str());
-        /*在命令行区域上执行绘制*/
-        a1->paint(BLACK32);
-        a1->print(ansi_str, painter->char_w, painter->char_h, WHITE32);
-        /*清理*/
-        free(ansi_str);
-        /*组装界面，并且刷写到屏幕*/
-        painter->Paint();
-        painter->lk.unlock();
-#endif
+        if (isDebug)
+            if (n != "") std::cout << n + "  " + s << std::endl;
+            else std::cout << s << std::endl;
+        else{
+	    /*为绘图器加锁*/
+            painter->lk.lock();
+            /*从绘图器获取命令行区域*/
+            Area *a1 = painter->a3_1;
+	    /*从超类中获取输出池尾部的信息，并且转化为ANSI编码*/
+            char *ansi_str = string::utf8_to_ansi((char*)this->Get().c_str());
+            /*在命令行区域上执行绘制*/
+            a1->paint(BLACK32);
+            a1->print(ansi_str, painter->char_w, painter->char_h, WHITE32);
+            /*清理*/
+            free(ansi_str);
+            /*组装界面，并且刷写到屏幕*/
+            painter->Paint();
+            painter->lk.unlock();
+	}
         this->lk.unlock();
     } //标准打印机
 

@@ -20,8 +20,15 @@ namespace qing{
         /*录入器类型，继承自通用线程类型*/    
         public:
             
-            EntryManagerTh(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {
+            EntryManagerTh(std::string name) : CommonThread(name) {
             }/*构造函数，首先调用父类的构造*/
+	    /*析构函数，关闭线程*/
+	    ~EntryManagerTh(){
+                if (this->chk() != SSHUT){
+                    this->close();//使线程自主关闭
+                }
+                this->WaitClose();//等待线程退出
+	    }
             
             /*暂时删除复制构造函数*/
             EntryManagerTh(EntryManagerTh&) = delete;
@@ -49,7 +56,7 @@ namespace qing{
                         /*准备线程的名字*/
                         std::string name = std::string("录入工具") + std::to_string(num++);
                         /*启动线程*/
-                        EntryToolThread *entryTool = new EntryToolThread(CommonThread::GetPrinter(), CommonThread::GetScript(), name, path);
+                        EntryToolThread *entryTool = new EntryToolThread(name, path);
                         entryTool->wake(); entryTool->WaitStart(1);
                         /*推入线程池*/
                         this->pool.push_back(entryTool);
@@ -66,8 +73,12 @@ namespace qing{
 
             void ClearEvent() override{
                 for(int i = pool.size() - 1; i > 0; --i){
+		    //pool[i]->close();
+		    //pool[i]->WaitClose();
                     delete(pool[i]);
+		    pool[i] = NULL;
                 }
+		pool.clear();
             }/*清理事件*/
 
         private:

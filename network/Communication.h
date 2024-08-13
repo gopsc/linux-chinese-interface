@@ -24,24 +24,52 @@ namespace qing {
 	/*基本和通用的数据交换接口，lci简单数据交换协议*/
         public:
 
-    //=================================================================
-        /* 使用简单LCI数据交换协议接收信息 */
-        static std::string recv_msg(int sock);
+        //=================================================================
+            /* 使用简单LCI数据交换协议接收信息 */
+            static std::string recv_msg(int sock);
 
-    //=================================================================
-        //Check if there is data available to read on the socket
-        //检查套接字缓冲区中是否还有可以读的数据
-        //
-        //The parameter is a created socket descripor
-        //参数是一个已经创建好的套接字描述符
-        //
-        //@qing,20240525: 第二次接收时可能会发生问题
-        static int checkSocket(int sock_fd);
+        //=================================================================
+            //Check if there is data available to read on the socket
+            //检查套接字缓冲区中是否还有可以读的数据
+            //
+            //The parameter is a created socket descripor
+            //参数是一个已经创建好的套接字描述符
+            //
+            //@qing,20240525: 第二次接收时可能会发生问题
+            static int checkSocket(int sock_fd);
 
-    //=================================================================
-        /* 通过LCI协议发送数据 */
-        static long send_msg(int sock, std::string s);
-        
+        //=================================================================
+            /* 通过LCI协议发送数据 */
+            static long send_msg(int sock, std::string s);
+ 
+        //=================================================================
+        //=================================================================
+            //-------------------------------------------------------------
+	    class CommuniError: public Error{
+	        public:
+		    CommuniError(const std::string& msg): Error(msg){}
+	    };
+            //-------------------------------------------------------------
+
+            class RcvError: public CommuniError{
+	        public:
+		    RcvError(const std::string& msg): CommuniError(std::string("接收数据异常：") + msg){}
+	    };
+
+	    class RcValueError: public CommuniError{
+	        public:
+		    RcValueError(const std::string& msg): CommuniError(std::string("接收到的值异常：") + msg){}
+	    };
+
+	    class SndError: public CommuniError{
+	        public:
+		    SndError(const std::string& msg): CommuniError(std::string("发送数据异常：") + msg){}
+	    };
+
+	    class ChkRcvBufError: public CommuniError{
+	        public:
+		    ChkRcvBufError(): CommuniError(std::string("检查接收缓冲区出错。")){}
+	    };
     };//交流
 
 }//qing

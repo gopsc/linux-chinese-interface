@@ -4,9 +4,9 @@
 #include <stdexcept>
 #include <thread>
 #include "../../type.h"
-#include "../model/fsm.h"
 #include "../Printer/StandardPrinter.h"
 #include "../script/DScript.h"
+#include "BasicThread.h"
 
 /*
 @qing：包含一个简易的多线程控制机制。
@@ -20,15 +20,23 @@ stop，setup，loop，clean函数中填入每个状态下的执行代码。
 /*
 @qing：通用的信使类型，抽象类，含有通用型主函数的定义
 */
+extern qing::StandardPrinter *printer;
+extern qing::DScript *script;
 
 namespace qing {
+    //线程的主函数
+    void thread_main(BasicThread *th);
+
+    //前向声明脚本类型
     class DScript;
-    class CommonThread: public Fsm{
-        //一个通常情况下的线程类型        
+    class CommonThread: public BasicThread {
+        //一个持有资源线程的状态机类型        
         public:  
             //构造函数.
 	    //没有必要输入打印机、脚本、线程的名字，放到全局变量
-            CommonThread(StandardPrinter *printer, DScript *script, std::string name);
+            CommonThread(std::string name);
+	    //暂时删除复制构造函数
+	    CommonThread(CommonThread&) = delete;
             //如果把析构函数放在这里，将会导致纯虚函数错误
             virtual ~CommonThread();
 
@@ -36,10 +44,6 @@ namespace qing {
             void SetLabel(std::string name);
             //对线程名字的获取
             std::string GetLabel();
-            //获取打印类的地址
-            StandardPrinter* GetPrinter();
-            //获取csc字典的地址
-            DScript* GetScript();
             //-----------------------------------------------------------
             bool WaitStart(float time) {
                 //等待线程启动完毕
@@ -57,64 +61,29 @@ namespace qing {
             void WaitClose() {
                 thread->join();
             }//等线程关闭
-        
-        protected:
-        
-            //-----------------------------------------------------------
-            //将数据发送到打印机类
-        
-            //以自己的名字为开头，将数据打印
-            void Print(std::string msg);
-            //直接打印
-            void PrintOnly(std::string msg);
 
-            //-----------------------------------------------------------
-            //读写脚本
-            std::string ReadScript(std::string key){
-                return this->script->Open(key);
-            }//读脚本
 
-            void WriteScript(std::string k, std::string v){
-                this->script->Add(k,v);
-            }//写脚本
-            //-----------------------------------------------------------
-
-            //程序睡眠阶段的操作函数。
-            virtual void StopEvent(){
-	        this->Print("注意，原始等待函数被调用");
+            virtual void StopEvent() override{
+		printer->Print(this->GetLabel(), "注意，原始事件函数被调用。");
+	        this->suspend();
 	    }
-            //程序设置阶段的操作函数。
-            virtual void WakeEvent(){
-	        this->Print("注意，原始唤醒函数被调用");
+            virtual void WakeEvent() override{
+		printer->Print(this->GetLabel(), "注意，原始事件函数被调用。");
+	        this->run();
 	    }
-            //程序运行阶段的操作函数。
-            virtual void LoopEvent(){
-	        this->Print("注意，原始循环体被调用");
+	    virtual void LoopEvent() override{
+		printer->Print(this->GetLabel(), "注意，原始事件函数被调用。");
+	        usleep(10000);
 	    }
-            //程序清理阶段的操作函数。
-            virtual void ClearEvent(){
-	        this->Print("注意，原始清理函数被调用。");
+	    virtual void ClearEvent() override {
+		printer->Print(this->GetLabel(), "注意，原始事件函数被调用。");
 	    }
-
-            //可以将操作函数作为一种事件，可以从外界传入写好的事件函数，
-            //那么就需要将操作函数设定为静态函数
-
         
         private:
         
             //线程的名字
             std::string label;
-            //用于整理输出的类
-            StandardPrinter *printer;
-            //用于存放配置文件的CSC类
-            DScript *script;     
             //用来存放该子线程的标识符。
             std::thread *thread = NULL;
-
-            //-----------------------------------------------------------
-            //通常情况下，线程的主函数。
-        
-            static void main(CommonThread *th);
-
         };
 }

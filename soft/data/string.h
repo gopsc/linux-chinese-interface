@@ -28,12 +28,13 @@ namespace qing {
 	
 
     class string: Unit{
-        //Use a continuous block of memory space to store a string.
+        //用一块连续的内存空间来存储一个字符串
         public:
             //----------------------------------------------------------------
-            //Basic string processing
+            //基本字符串处理
 
             static long long count(const char* p){
+		/*输入一个C风格字符串，返回它的有效长度*/
                 long long l = 0;  
                 while (*p != '\0') {
                     l++;  
@@ -43,26 +44,29 @@ namespace qing {
             }//count
 
 	    static size_t count_utf8(const char *s) {
-	        //Calculate the length of the string in UTF-8 characters
+	        //计算字符串在UTF-8编码下的字符数
                 
 		size_t len = 0;
 		mbstate_t state = {0};
-		//This object can save the converted location information
+		//这个对象可以保存转换后的位置信息
 
 		while(*s){
-		    //Determine the length of the multibyte character sequence
+		    //确定多字节字符序列的长度
 		    size_t ret = mbrlen(s, MB_CUR_MAX, &state);
+		    //处理错误
 		    if(ret != (size_t)-2 && ret !=(size_t)-1){
 		        len++;
 			s += ret;
 		    }else{
 		        break;
-		    }//handle error
+		    }
 		}
 		return len;
 	    }//count_utf8
 
             static size_t count_utf8_char(char byte){
+		//手动计算utf8字符串的字符数量，存在一些边界情况和复杂性
+		
 	        if ((byte & 0x80) == 0) {  //ASCII char: 0xxxxxxx
 		    return 1;
 		} else if ((byte & 0xE0) == 0xC0) { // 2 byte char: 110xxxxx
@@ -75,6 +79,7 @@ namespace qing {
 	    }
 
             static char* copy(char* p, const char* src){
+		//将一个C风格字符串的有效内容，复制到另一块连续的内存空间。
                 char* tmp = p;
                 while (*src != '\0') {
                     *p = *src;  
@@ -86,6 +91,7 @@ namespace qing {
             }
 
             static char* cat(char* p, const char* src){
+		//将一个C风格的字符串，拼接到另一个的后面
                 char* cur = p;
                 while (*cur) {  
                     cur++;
@@ -100,6 +106,7 @@ namespace qing {
             }//concatenation
 
             static int compare(const char *p1, const char *p2){
+		//比较两个C风格字符串是不是相等的
                 while (*p1 && (*p1 == *p2)) {
                     p1++;  
                     p2++;  
@@ -113,9 +120,10 @@ namespace qing {
 
 	
             //----------------------------------------------------------------
-            //C-Array string about
+            //C风格字符串相关
 
             static char* get_copy(char* p){
+		//获取一个存放在堆上的C风格字符串的副本，用完之后要释放。
                 long long l = string::count(p);
                 char* tmp = new char[l + 1];
                 tmp[0] = '\0';
@@ -124,6 +132,7 @@ namespace qing {
             }
 
             static char* get_cat(char* p1, char* p2){
+		//获取一个存放在堆上的字符串拼接结果的副本，用完之后要释放。
                 long long l = string::count(p1) + string::count(p2);
                 char* news = new char[l + 1];
                 news[0] = '\0';
@@ -132,21 +141,23 @@ namespace qing {
                 return news;
             }
 
+	    //将utf8字符串转换为ansi编码，返回一个副本，用完后需要释放
             static char* utf8_to_ansi(char* utf8_string);
+	    //将utf8字符串转换为wchar格式，返回一个副本，用完后需要释放
 	    static wchar_t* utf8_to_wchar(const char*utf8_str);
 
             //----------------------------------------------------------------
-            //C++ style string about
+            //C++风格字符串相关
         
             static std::string to_string(double value, int num){
-		// Keep a certain number of decimal places
+		//将双精度小数转换为字符串，并且保留一定数量的小数位数
                 std::ostringstream stream;
                 stream << std::fixed << std::setprecision(num) << value;
                 return stream.str();
             }
 
             static int count_lines(const std::string &s) {
-                //Count the newline symbols in s string
+                //计算字符串中的换行符数量
                 int i = 0;
                 for (char c : s) {
                     if (c == '\n') {
@@ -158,7 +169,7 @@ namespace qing {
 
 
             //----------------------------------------------------------------
-            //qing string
+            //qing字符串
 
             string();
             string(const char *p);

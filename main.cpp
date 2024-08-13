@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "soft/system-call/FilesystemOp.h"
+#include "soft/script/UnixParamInterface.h"
 #include "soft/script/DScript.h"
 #include "soft/terminal/DisableEcho.h"
 #include "soft/terminal/HideCursor.h"
@@ -44,10 +45,14 @@
  */
 
 #ifndef DEBUG    
-//PrimaryTerminal 原始终端;
-qing::DisableEcho disableEcho;
-qing::HideCursor  hideCursor;
+qing::DisableEcho *disableEcho   = NULL;
+qing::HideCursor  *hideCursor    = NULL;;
 #endif
+
+/* 配置变量 */
+std::string confPath = "/etc/lci/configure.csc";
+std::string logoPath = "/etc/lci/logo.jpg";
+bool isDebug = false;
 
 /* 打印机 */
 qing::StandardPrinter *printer = new qing::StandardPrinter(1024, 1);
@@ -58,20 +63,73 @@ qing::CmdPainter *painter = NULL;
 /* 线程池 */
 std::vector<qing::CommonThread*> pool(10, NULL);
     
+namespace qing {
+    class UnixParamInterface: public Interface{
+        public:
+	    static bool IsSett(char* arg){
+	        if (strstr(arg,"--") == arg && strchr(arg, '=') != NULL)
+		    return true;
+	        else return false;
+	    }
+	    static std::string getParamKey(char *arg){
+	        std::string s(arg);
+	        return s.substr(2, s.find("=") - 2);
+	    }
+	    static std::string getParamValue(char *arg){
+	        std::string s(arg);
+	        size_t pos = s.find("=");
+	        return s.substr(pos + 1, s.size() - 2);
+	    }
+    };
+}
+
 
 int main(int argc, char **argv) {
 
-/*
- * @qing，20240714：（
- * 设置配置文件路径。参[0]是被执行的文件，参[1]可传入配置文件。
- * ）
- */
-    std::string confPath = "/etc/lci/configure.csc";
-    if (argc == 2) confPath = argv[1];
-  
-    script = new qing::DScript(qing::FilesystemOp::Readfile(confPath));
-    painter = new qing::CmdPainter(printer, script, "/etc/lci/logo.jpg");
 
+/*
+ * @qing，20240714：设置配置文件路径。参[0]是被执行的文件，参[1]可传入配置文件。
+ * @qing，20240812：仅使用全名配置。
+ */
+    if (argc > 1){ //扫描和解析进程参数
+        for (int i = 1; i < argc; ++i) {
+	    if (qing::UnixParamInterface::IsSett(argv[i])) {
+		std::string k = qing::UnixParamInterface::getParamKey(argv[i]);
+	        std::string v = qing::UnixParamInterface::getParamValue(argv[i]);
+		if (k == "debug" && v == "true")
+		    isDebug = true;
+		else if (k == "configure")
+		    confPath = v;
+		else if (k == "logo")
+		    logoPath = v;
+		else throw std::runtime_error(std::string("未知的参数：") + k);
+	    }
+	}
+    }
+  
+    if (!isDebug){
+	disableEcho = new qing::DisableEcho;
+	hideCursor = new qing::HideCursor;
+    }
+
+    script = new qing::DScript(qing::FilesystemOp::Readfile(confPath));
+    painter = new qing::CmdPainter(printer, script, logoPath);
+
+
+    pool[0] = new qing::EntryManagerTh("输入管1");
+    pool[1] = new qing::Reciver("接收器1");
+    pool[2] = new qing::Accessor("访问器1");
+    
+/*
+    //编译线程
+    pool[3] = new qing::CompileManager("管理器1");
+*/    
+    for (int i=0; i<pool.size(); ++i){
+        if(pool[i]){
+            pool[i]->wake();
+            pool[i]->WaitStart(1);
+        }
+    }
 
 /*
  * @qing，20240714：（
@@ -82,48 +140,39 @@ int main(int argc, char **argv) {
  * 封装成声明类型。
  * ）
  */
-    pool[0] = new qing::EntryManagerTh(printer, script, "输入管1");
-    pool[1] = new qing::Reciver(printer, script, "接收器1");
-    pool[2] = new qing::Accessor(printer, script, "访问器1");
-    
-/*
-    //编译线程
-    pool[3] = new qing::CompileManager(printer, script, "管理器1");
-*/    
-    for (int i=0; i<pool.size(); ++i){
-        if(pool[i]){
-            pool[i]->wake();
-            pool[i]->WaitStart(1);
-        }
-    }
-
-#ifndef DEBUG
-    system("chvt 8");
-#endif
+    //切换控制台
+    if (!isDebug) system("chvt 8");
 
     printer->Print("", "你好，操作员。系统已经开始运转。\n");
-    sleep(1);
+    //sleep(1);
 
-    //script->Add("进程—状态", "运行");
+    if(!isDebug) script->Add("进程—状态", "运行");
+    else        script->Add("进程—状态", "调试运行");
+
     /*用脚本来控制开关状态。*/
-    while(script->Open("进程—状态") == "运行") {
+    while(script->Open("进程—状态") != "终止") {
         usleep(10000);
     }
 
-#ifndef DEBUG
-    system("chvt 1");
-#endif
+    //切换回控制台
+    if (!isDebug) system("chvt 1");
+
     
     for (int i=0; i<pool.size(); i++){
         if(pool[i]){
+	    //pool[i]->close();
+	    //pool[i]->WaitClose();
 	    delete pool[i];
 	    pool[i] = NULL;
 	}
     }
-    //sleep(1);
-    delete painter;
-    delete script;
-    delete printer;
+    if (painter) delete painter;
+    if (script) delete script;
+    if (printer) delete printer;
+
+    if (disableEcho) delete disableEcho;
+    if (hideCursor) delete hideCursor;
+
 
     std::cout << "\nprogram shut.\n";
     while(true) usleep(100000);

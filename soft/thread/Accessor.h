@@ -12,9 +12,18 @@
 #include <netinet/tcp.h>
 #include "../../cJSON/cJSON.h"
 #include "../script/DScript.h"
+#include "../script/JsonInterface.h"
 #include "../Printer/StandardPrinter.h"
 #include "../../network/Communication.h"
 #include "CommonThread.h"
+
+/*main.cpp*/
+extern bool isDebug;
+/* 基本的打字器 */
+//extern qing::StandardPrinter *printer;
+/* 全局脚本变量 */
+//extern qing::DScript *script;
+
 
 /*
 @qing，2024-2-2：此模块为程序的网络访问程序。
@@ -26,7 +35,14 @@ namespace qing {
     /*访问器类型，继承自通用线程类型*/    
     public:
         /*构造函数，首先调用父类的构造*/
-        Accessor(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {}
+        Accessor(std::string name) : CommonThread(name) {}
+	/*析构函数，关闭线程*/
+	~Accessor(){
+            if (this->chk() != SSHUT){
+                this->close();//使线程自主关闭
+            }
+            this->WaitClose();//等待线程退出
+	}
         /*暂时删除复制构造函数*/
         Accessor(Accessor&) = delete;
    
@@ -40,17 +56,14 @@ namespace qing {
             /*程序设置阶段的操作函数。*/
             try {
                 /*根据配置文件中写的配置*/
-                std::string path = CommonThread::GetScript()->Open("配置—访问器—地址");
-                std::string port = CommonThread::GetScript()->Open("配置—访问器—端口");
-                //CommonThread::Print(std::string("准备连接到目标：") + path + ":" + port);
+                std::string path = ::script->Open("配置—访问器—地址");
+                std::string port = ::script->Open("配置—访问器—端口");
+                if (isDebug) printer->Print("", std::string("准备连接到目标：") + path + ":" + port);
                 
-                /*在堆上创建一个Linux客户端类型*/
-                //clent = new LinuxClient(path, port);
-            
                 {
                     this->sock = socket(AF_INET, SOCK_STREAM, 0);
                     if (this->sock <= 0)
-                        throw std::runtime_error(std::string("createSocket: ") + strerror(errno));
+                        throw std::runtime_error(std::string("创建套接字失败：") + strerror(errno));
                         
                     struct in_addr testaddr;
                     if (inet_pton(AF_INET, path.c_str(), &testaddr) == 1) {
@@ -79,10 +92,10 @@ namespace qing {
                                 serverip.sin_port = htons(std::stoi(port));
                             
                             } else {
-                                throw std::runtime_error(std::string("Parse no ip: ") + strerror(errno));
+                                throw std::runtime_error(std::string("没有解析出IP。") + strerror(errno));
                             }
                         } else {
-                            throw std::runtime_error(std::string("gethostbyname: ") + strerror(errno));
+                            throw std::runtime_error(std::string("通过域名获取地址失败。") + strerror(errno));
                         }
                     }
                     
@@ -93,19 +106,18 @@ namespace qing {
                 {
                 
                     struct timeval t;
-                    t.tv_sec = 2;
+                    t.tv_sec = 1;
                     t.tv_usec = 0;
                 
                     if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&t, sizeof(t)) < 0) {
-                        throw std::runtime_error(std::string("Set socket timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间。") + strerror(errno));
                     }
                   
                     if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&t, sizeof(t)) < 0) {
-                        throw std::runtime_error(std::string("Set socket timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间。") + strerror(errno));
                     }
                         
                 } /* Set socket timeout */
-
 
 		{
 		    int sockfd;
@@ -115,14 +127,14 @@ namespace qing {
 		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 		}
 
-
-                //通用线程::打印("初始化成功");
+                //printer->Print("","初始化成功");
                 this->run();
 
             } catch (const std::exception& e) {
                 /*线程设置失败*/
-                CommonThread::Print(std::string("线程设置失败： ") + e.what());
-                this->stop(); return;
+                ::printer->Print("",std::string("访问器线程设置失败： ") + e.what());
+                this->stop();
+		return;
             }/*设置阶段异常*/
 
         }/*配置事件*/
@@ -133,35 +145,30 @@ namespace qing {
 
             try {
             
-                /*开始连接*/
-                //clent->StartConnect();
-                
-                // Is't only success as 0 return
+                //成功时返回0
                 if (0 != connect( this->sock, (struct sockaddr *)&serverip, sizeof(struct sockaddr_in))) {
-                    throw std::runtime_error(std::string("connect failed: ") + strerror(errno));
+                    throw std::runtime_error(std::string("套接字连接失败。") + strerror(errno));
                 }
-                //printf("已连接到目标IP \n");
+                if (isDebug) printer->Print("","已连接到目标IP \n");
 
 
                 while (this->chk() == SRUNNING) { 
                 
                     std::string msg_out;
-//this->Print("prepare");
+                    if(isDebug) ::printer->Print(this->GetLabel(),"prepare");
 
                     /*准备简报，向临时简报中添加内容*/
                     {
-                        //DScript tmp1;
-                        //tmp1.Add("简报—名字", CommonThread::GetScript()->Open("简报—名字"));
                         cJSON *reportItem = cJSON_CreateObject();
-                        std::string name = CommonThread::GetScript()->Open("简报—名字");
+                        std::string name = ::script->Open("简报—名字");
                         cJSON_AddStringToObject(reportItem, "名字", name.c_str());                    
 
                         /*将指示发送过去*/
                         cJSON *communicationItem = cJSON_CreateObject();
-                        std::string sendstr = CommonThread::ReadScript("指示—发送");
+                        std::string sendstr = ::script->Open("指示—发送");
                         std::string instruction = sendstr == "" ? "关闭连接" : sendstr;
                         cJSON_AddStringToObject(communicationItem, "指示", instruction.c_str());
-                        if (sendstr != "") CommonThread::GetScript()->Del("指示—发送"); 
+                        if (sendstr != "") ::script->Del("指示—发送"); 
 			/*创建根结点*/
 			cJSON *dataReport = cJSON_CreateObject();
                         cJSON_AddItemToObject(dataReport, "简报", reportItem);
@@ -173,19 +180,18 @@ namespace qing {
 			cJSON_Delete(dataReport);
                     }
 
-//this->Print("send");
+                    if(isDebug) ::printer->Print(this->GetLabel(),"send");
                     /*文本形式发送*/
                     Communication::send_msg(this->sock, msg_out);
 
-//this->Print("recv");
+                    if(isDebug) ::printer->Print(this->GetLabel(),"recv");
                     /*文本形式接收*/
                     std::string recv_msg = Communication::recv_msg(this->sock);
-//this->Print(recv_msg);
                     //通用线程::打印(接收);
                     /*分析接受到的简报文本*/
                     std::string InstructionGot;
 
-//this->Print("analyze");
+                    if (isDebug) ::printer->Print(this->GetLabel(),"analyze");
                     {
 			/*解析收到的数据*/
 			cJSON *dataReport = cJSON_Parse(recv_msg.c_str());
@@ -206,7 +212,7 @@ namespace qing {
                     }
 
                     if		(InstructionGot == "关闭连接")	this->stop();
-                    else if	(InstructionGot == "保持联络")	CommonThread::WriteScript("指示—发送", "保持联络");
+                    else if	(InstructionGot == "保持联络")	::script->Add("指示—发送", "保持联络");
 
 
                     usleep(100000);
@@ -214,12 +220,23 @@ namespace qing {
                 }/*开始交流*/
                 
                 /*循环被跳出，即是收到了结束信号*/
-                //CommonThread::Print("成功。");
+                //::printer->Print("","成功。");
 
-            } catch (std::exception& e) {
-                CommonThread::Print(std::string("通信遇到异常：") + e.what());
+            }
+	   
+	    catch (Communication::CommuniError &e) {
+                ::printer->Print("",std::string("短线重连，因为") + e.what());
+                this->wake();
+            }
+	    catch (JsonInterface::JsonParseError &e) {
+	        ::printer->Print("", std::string("解析失败，因为") + e.what());
+		this->stop();
+	    }
+	    catch (std::exception& e) {
+                ::printer->Print("",std::string("出现未知错误：") + e.what());
                 this->stop();
-            }/*通信过程中发生了异常*/
+	    }
+	    /*通信过程中发生了异常*/
 
             /*重连的等待时间*/
             usleep(100000);
@@ -232,36 +249,25 @@ namespace qing {
         
             try { 
             
-                /*如果Linux服务器类型已经被设置过了
-                就将其析构，如果没有什么也不做*/
-                /*
-                if (this->clent != NULL){
-                    delete(this->clent);
-                    this->clent = NULL;
-                }
-                */
                 if (this->sock > 0){
                     ::close(this->sock);
                     this->sock = -1;
                 }
                 
-                //CommonThread::Print("清除");
+                //::printer:Print("","清除");
             } catch (std::exception& e) {
-                CommonThread::Print(std::string("程序在清理阶段出现异常：") + e.what());
+                ::printer->Print("",std::string("程序在清理阶段出现异常：") + e.what());
                 this->stop(); return;
             }/*清理阶段出现了异常*/
 
         }/*清理事件*/
 
     private:
-        /*声明一个Linux客户端类型的指针*/
-        //LinuxClient *clent = NULL;
     
+	//套接字
         int sock = -1;
         
-        //A struct type for recording 
-	//the address of the server
-	//to connect to
+	//这是一个用于存储要连接的服务器地址的结构体
         struct sockaddr_in serverip;
                                
     };/*访问器*/

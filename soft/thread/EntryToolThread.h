@@ -13,6 +13,9 @@
 #include "../Printer/StandardPrinter.h"
 #include "CommonThread.h"
 
+//extern qing::StandardPrinter *printer;
+//extern qing::DScript *script;
+
 /*录入工具从输入事件中读取字符，并且反映在输入框上面。
 一个录入工具读取一个输入事件。
 它们被录入管理器所创建、控制和关闭*/
@@ -22,9 +25,16 @@ namespace qing{
         /*录入器类型，继承自通用线程类型*/    
         public:
             
-            EntryToolThread(StandardPrinter *printer, DScript *script, std::string name, std::string path) : CommonThread(printer, script, name) {
+            EntryToolThread(std::string name, std::string path) : CommonThread(name) {
                 this->path = path;
             }/*构造函数，首先调用父类的构造*/
+	    /*析构函数，关闭线程*/
+	    ~EntryToolThread(){
+                if (this->chk() != SSHUT){
+                    this->close();//使线程自主关闭
+                }
+                this->WaitClose();//等待线程退出
+	    }
             
             /*暂时删除复制构造函数*/
             EntryToolThread(EntryToolThread&) = delete;
@@ -51,7 +61,7 @@ namespace qing{
                 /*配置输入事件*/
                 this->fd = open(path.c_str(), O_RDONLY);  
 		if (this->fd < 0){
-		    this->Print("打开文件失败。");
+		    ::printer->Print("","打开文件失败。");
 		    this->stop();
 		}//fail
 		
@@ -64,9 +74,9 @@ namespace qing{
                 struct pollfd pfd;
                 pfd.fd = this->fd;
                 pfd.events = POLLIN;
-                int ret = poll(&pfd, 1, this->t * 1000);
+                int ret = poll(&pfd, 1, 0.4 * 1000);
                 if (ret == -1){
-                    this->Print("set poll"); //error
+                    ::printer->Print("","设置poll出错。"); //error
                     this->stop();
                 }
                 else if(ret == 0) return; //timeout
@@ -80,15 +90,15 @@ namespace qing{
                     if (ev.type == EV_KEY && ev.value == 1){
                                             
                         //handle
-                        if(ev.code == 1) this->WriteScript("进程—状态","close");
-                        this->Print(std::to_string(ev.code));
+                        if(ev.code == 1) ::script->Add("进程—状态","终止");
+                        ::printer->Print(this->GetLabel(), std::to_string(ev.code));
                         
                     }
                     
                 } else if (n == -1) {  
                     if (errno == EAGAIN || errno == EWOULDBLOCK) return;// 没有数据可读，非阻塞调用
                     else {
-                        this->Print("读取设备失败。");
+                        ::printer->Print(this->GetLabel(),"读取设备失败。");
                         this->stop();
                     }
                 }
@@ -103,7 +113,6 @@ namespace qing{
 
             std::string path;
             int fd = 0;
-            float t = 0.4;
 
     };/*录入设备*/
 }/*qing*/

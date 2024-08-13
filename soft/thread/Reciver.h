@@ -15,6 +15,9 @@
 #include "CommonThread.h"
 #include "Connector.h"
 
+//extern qing::StandardPrinter *printer;
+//extern qing::DScript *script;
+
 /*
 @qing：此模块为程序的网络伺服器模块。
 */
@@ -23,11 +26,18 @@
 
 namespace qing {
 
-    class Reciver: public CommonThread {
+    class Reciver: public CommonThread{
         /*创建一个信使线程，相当于一个基本的服务器程序*/
     public:
         /*构造函数*/
-        Reciver(StandardPrinter *printer, DScript *script, std::string name) : CommonThread(printer, script, name) {}
+        Reciver(std::string name) : CommonThread(name) {}
+	/*析构函数，关闭线程*/
+	~Reciver(){
+            if (this->chk() != SSHUT){
+                this->close();//使线程自主关闭
+            }
+            this->WaitClose();//等待线程退出
+	}
         /*暂时删除复制构造函数*/
         Reciver(Reciver&) = delete;
         
@@ -42,7 +52,7 @@ namespace qing {
 
             try {
                 /*使用配置文件中设置的端口*/
-                std::string port = CommonThread::GetScript()->Open("配置—接收装置—端口");
+                std::string port = ::script->Open("配置—接收装置—端口");
                 /*输出*/
                 //CommonThread::Print(std::string("端口开始监听：") + port);
                 
@@ -52,7 +62,7 @@ namespace qing {
                     /*Create socket*/
                     this->sock = socket(AF_INET, SOCK_STREAM, 0);
                     if (this->sock <= 0)
-                        throw std::runtime_error(std::string("Create socket: ") + strerror(errno));
+                        throw std::runtime_error(std::string("创建套接字失败。") + strerror(errno));
                 }
                 {
                     //Specify the protocol family as IPv4
@@ -64,13 +74,14 @@ namespace qing {
                     //Convert the port number to network byte order
                     serveraddr.sin_port = htons(std::stoi(port));
                 }
-                
+
                 {
-                    /*set port nowait*/
+                    //设置端口无等待
                     int v = 1;
-                    setsockopt(this->sock, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(v));
+                    if(setsockopt(this->sock, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(v)) < 0)
+			throw std::runtime_error(std::string("设置套接字端口无等待失败了。"));
                 }
-                
+             
                 {
                     /* Set blocking time */
                     //@陈昊元
@@ -79,33 +90,32 @@ namespace qing {
                     t.tv_usec = 0;
                     
                     if (setsockopt(this->sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&t, sizeof(t)) < 0)
-                        throw std::runtime_error(std::string("Set timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间失败。") + strerror(errno));
                         
                     if (setsockopt(this->sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&t, sizeof(t)) < 0)
-                        throw std::runtime_error(std::string("Set timeout: ") + strerror(errno));
+                        throw std::runtime_error(std::string("设置套接字堵塞时间失败。") + strerror(errno));
                 }
 		
 		{
-		    int sockfd;
 		    int flag = 1;
-
 		    //设置套接字选项以关闭Nagle算法
-		    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+		    if(setsockopt(this->sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag)) < 0)
+			throw std::runtime_error(std::string("设置关闭Nagle算法失败。"));
 		}
                 
                 {
                     if (bind(this->sock, (struct sockaddr*)&(this->serveraddr), sizeof(sockaddr_in)) == -1)
-                        throw std::runtime_error(std::string("Server Bind: ") + strerror(errno));
+                        throw std::runtime_error(std::string("套接字绑定失败。") + strerror(errno));
                         
                     if (listen(this->sock, 5) == -1)
-                        throw std::runtime_error(std::string("Server start listen") + strerror(errno));
+                        throw std::runtime_error(std::string("套接字监听失败。") + strerror(errno));
                 }
                 
-                //通用线程::打印("初始化成功。");
+                //::printer->Print("","初始化成功。");
                 this->run();
 
             } catch (std::exception& e) {
-                CommonThread::Print(std::string("程序在设置阶段出现异常：") + e.what());
+                ::printer->Print("",std::string("程序在设置阶段出现异常：") + e.what());
                 this->stop(); return;
             }/*设置阶段异常*/
 
@@ -118,16 +128,21 @@ namespace qing {
             try {
             
                 /* 等待客户端连接 */
-                //ClientSocket *Connection = new ClientSocket(this->sock);
-                sockaddr_in clientaddr; // A struct for temporarily recording client addresses
+                sockaddr_in clientaddr; //暂时记录客户端地址的结构体
                 socklen_t l = sizeof(clientaddr);
                 int clientsock = accept(this->sock, (struct sockaddr*)&clientaddr, &l);
-                if (clientsock == -1) throw std::runtime_error(std::string("Create client socket: ") + strerror(errno));
-//this->PrintOnly(std::to_string(clientsock));
-                
+                if (clientsock == -1) throw std::runtime_error(std::string("创建客户端套接字失败。"));
+
+                /* 获取连接者的IP地址 */
+                char ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &(clientaddr.sin_addr), ip, INET_ADDRSTRLEN);
+                int port = ntohs(clientaddr.sin_port);
+                /* 设置为该线程的标签 */
+                std::string name = std::string(ip) + ":" + std::to_string(port);
+
+//::printer->Print("",std::string("有客户端连接。") + name);
                 /*建立交流线程*/
-                std::string name = std::string("交谈") + std::to_string(++num);
-                Connector *connector = new Connector(CommonThread::GetPrinter(), CommonThread::GetScript(), name, clientsock, clientaddr);
+                Connector *connector = new Connector(name, clientsock);
                 connector->wake();
                 connector->WaitStart(1);
 
@@ -141,12 +156,15 @@ namespace qing {
                 //通用线程::打印("重新运行。");
             }/*接收连接失败，这里的异常是接收失败导致的，不用管*/
             
-            if(this->chk() == SRUNNING){
+            //if(this->chk() == SRUNNING){
             /*如果不放在条件分支中，将会导致段错误，不知道为什么*/
+	    while(IsThereShut(pool)){
 
                 for (int i = pool.size() - 1; i > -1; --i) {
                     /*检查连接池的长度*/
                     if (pool[i]->chk() == SSHUT) {
+			//pool[i]->close();
+			//pool[i]->WaitClose();
                         delete pool[i];
                         pool.erase(pool.begin() + i);
                         break;/*一次只删除一个元素*/
@@ -160,11 +178,13 @@ namespace qing {
 
         void ClearEvent() override {
             /*程序清理阶段的操作函数。*/
-CommonThread::Print("清除程序启动。");
+//::printer->Print("","清除程序启动。");
             
             try {
                 
                 for(int i=pool.size()-1; i>=0; i--) {
+		    //pool[i]->close();
+		    //pool[i]->WaitClose();
                     delete pool[i];
                 }/*遍历线程池，关闭所有连接*/
                 pool.clear();
@@ -177,11 +197,11 @@ CommonThread::Print("清除程序启动。");
                 } /*删除伺服器*/
                 
                 /*执行成功*/
-CommonThread::Print("清除。");
+//::printer->Print("","清除。");
             }
             
             catch (std::exception e) {
-                CommonThread::Print(std::string("清理时出错：") + e.what());
+                ::printer->Print("",std::string("清理时出错：") + e.what());
                 this->stop();
             }/*清理阶段异常*/
             
@@ -197,10 +217,14 @@ CommonThread::Print("清除。");
         
         //存放客户端套接字的向量。
         std::vector<Connector*> pool;
-        
-        //存放一共有多少次交谈
-        size_t num = 0;
 
+
+	static bool IsThereShut(std::vector<Connector*> &vt){
+	    for (int i = vt.size() - 1; i >= 0; --i){
+	        if (vt[i]->chk() == SSHUT) return true;
+	    }
+	    return false;
+	}
         
     };/*接收装置*/
     

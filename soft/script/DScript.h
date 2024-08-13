@@ -22,10 +22,11 @@ namespace qing{
     
         //构造函数，创建空的csc
         DScript() {}
-        //构造函数，从文本或者文件中读取
+
+        //构造函数，从文本中读取
         DScript(std::string text){
             this->toDict(text);
-        }//Constructor
+        }//构造函数
         
         //暂时关闭该函数的复制构造函数
         DScript(DScript&) = delete;
@@ -35,8 +36,8 @@ namespace qing{
         //将字典写成配置文件
         std::string toStr(){
             lk.lock();
-            
             //对表进行收集
+
             //要保存的结果字符串
             std::string res = "";
             // 使用基于范围的for循环遍历
@@ -100,10 +101,11 @@ namespace qing{
 
     private:
 
-        //锁类型
+        //锁类型,为确保该变量为线程安全的
         std::mutex lk;
         //存放读出的字典。
         std::unordered_map<std::string, std::string>    kvTable;
+	//变量池
         std::unordered_map<std::string, Unit*>          variPool;
         //全局路径
         std::string curPath = "";
@@ -126,6 +128,7 @@ namespace qing{
             //记录行数
             int line;
 
+	    //扫描器部分
             do {
                 //查找下一个换行符
                 pos2 = msg.find('\n', pos1 + 1);

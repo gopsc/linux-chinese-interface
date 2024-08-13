@@ -1,6 +1,9 @@
 
 #include "CmdPainter.h"
 
+/*main.cpp*/
+extern bool isDebug;
+
 namespace qing{
 	
     CmdPainter::CmdPainter(StandardPrinter *printer, DScript *script, std::string imgpath) {
@@ -35,13 +38,14 @@ namespace qing{
         }
             
         //检查帧缓冲设备的变量
-        //...
-        std::cout << "Linux screen just boot." << std::endl;
-        std::cout << "Descartes:\t"     << var_info.xres            << "," << var_info.yres << std::endl;
-        std::cout << "Virtual:\t"       << var_info.xres_virtual    << "," << var_info.yres_virtual << std::endl;
-        std::cout << "Buffer length:\t" << fix_info.smem_len        << std::endl;
-        std::cout << "Start point:\t"   << fix_info.smem_start      << std::endl;
-        std::cout << "pixel size:\t"    << var_info.bits_per_pixel  << std::endl;
+	if (isDebug) {
+            std::cout << "Linux screen just boot." << std::endl;
+            std::cout << "Descartes:\t"     << var_info.xres            << "," << var_info.yres << std::endl;
+            std::cout << "Virtual:\t"       << var_info.xres_virtual    << "," << var_info.yres_virtual << std::endl;
+            std::cout << "Buffer length:\t" << fix_info.smem_len        << std::endl;
+            std::cout << "Start point:\t"   << fix_info.smem_start      << std::endl;
+            std::cout << "pixel size:\t"    << var_info.bits_per_pixel  << std::endl;
+        }
 
 	/* 目前仅支持32位像素比特的屏幕驱动 */
 	if (var_info.bits_per_pixel != 32){

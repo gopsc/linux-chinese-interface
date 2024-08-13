@@ -3,9 +3,11 @@
 #include <iostream>
 #include <vector>
 #include "../Printer/StandardPrinter.h"
-#include "CommonThread.h"
 #include "../script/DScript.h"
+#include "CommonThread.h"
 
+//extern qing::StandardPrinter *printer;
+//extern qing::DScript *script;
  
 namespace qing {
 	
@@ -16,7 +18,14 @@ namespace qing {
 	 */		
 	public:
 	    /*构造函数*/
-	    CompileManager(StandardPrinter *printer, DScript *script, std::string name): CommonThread(printer, script, name) {}
+	    CompileManager(std::string name): CommonThread(name) {}
+            /*析构函数，关闭线程*/
+            ~CompileManager(){
+                if (this->chk() != SSHUT){
+                    this->close();//使线程自主关闭
+                }
+                this->WaitClose();//等待线程退出
+            }
 	    /*暂时删除复制构造函数*/
 	    CompileManager(CompileManager&) = delete;
 
@@ -46,10 +55,10 @@ namespace qing {
         
         void WakeEvent() override{
             /*程序在设置阶段的操作函数。*/
-            std::string conf = this->ReadScript("配置—编译管理器");
+            std::string conf = ::script->Open("配置—编译管理器");
             std::vector<std::string> prjSet = Split(conf, "\n");
             for(long i=prjSet.size()-1; i>-1; --i){
-				this->PrintOnly(prjSet[i]);
+				::printer->Print(this->GetLabel(),prjSet[i]);
 			}
             /*单向线程*/
             this->close();

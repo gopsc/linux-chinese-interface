@@ -24,10 +24,10 @@ void line(double x1, double y1, double x2, double y2) {
 	double i, j;
 	i = x1;
 	j = y1;
-	if (abs(x2 - x1) > abs(y2 - y1))
-		dt = 1 / (abs(x2 - x1) * 2.0);
+	if (std::abs(x2 - x1) > std::abs(y2 - y1))
+		dt = 1 / (std::abs(x2 - x1) * 2.0);
 	else
-		dt = 1 / (abs(y2 - y1) * 2.0);
+		dt = 1 / (std::abs(y2 - y1) * 2.0);
 	for (t = 0; t <= 1.0; t += dt)
 	{
 		pixel(int(i+0.5), int(j+0.5));

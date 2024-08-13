@@ -4,9 +4,9 @@
 #cpr=/mnt/1/qs_20240801/src/tools-master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-g++
 cpr=clang++
 
-cop='-std=c++17 -lX11 -lpthread'
+cop='-std=c++20 -O0 -lX11 -lpthread'
 #cop='-lX11 -lpthread'
-dop=''
+dop='-DNOTEST'
 out_name='lci'
 
 #调整参数
@@ -14,7 +14,7 @@ if [ $# -eq 1 ]; then
     if [ $1 = 'debug' ]; then
 ls    
         echo 'Compile with debug mode...'
-        dop='-DDEBUG'
+        dop="${dop} -DDEBUG"
 	out_name='debug'
 
     fi
@@ -33,7 +33,7 @@ in_names=(\
     "soft/Printer/BasicPrinter" "soft/Printer/StandardPrinter" \
     "soft/Painter/CmdPainter" "soft/Painter/Area/Area" \
     "soft/Painter/font_library/ku500" "soft/Painter/font_library/showzhi" \
-    "soft/thread/CommonThread")
+    "soft/thread/CommonThread" "soft/thread/thread_main")
 
 
 echo 'Compile start...'
